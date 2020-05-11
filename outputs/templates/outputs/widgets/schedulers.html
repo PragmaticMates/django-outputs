@@ -1,0 +1,98 @@
+{% load i18n static humanize cache utils pragmatic_tags %}
+{% get_current_language as LANGUAGE_CODE %}
+
+{% if title %}
+    <div class="d-flex">
+        <h4 class="mb-4 flex-grow">{{ title }}</h4>
+    </div>
+{% endif %}
+
+<div class="box-with-shadow">
+    {% if schedulers.exists %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>{% trans 'Routine' %}</th>
+                        <th>{% trans 'Active' %}</th>
+                        <th>{% trans 'Creator' %}</th>
+                        <th>{% trans 'Recipients' %}</th>
+                        <th>{% trans 'Created' %}</th>
+                        <th>{% trans 'Format' %}</th>
+                        <th>{% trans 'Context' %}</th>
+                        <th>{% trans 'Model' %}</th>
+                        <th>{% trans 'Params' %}</th>
+                        <th>{% trans 'Fields' %}</th>
+                        <th>{% trans 'Scheduled' %}</th>
+                        <th>{% trans 'Actions' %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for scheduler in schedulers %}
+                    <tr>
+                        <td><a href="{{ scheduler.get_absolute_url }}">{{ scheduler.id }}</a></td>
+                        <td>
+                            {{ scheduler.get_routine_display }}
+                            <small class="d-block">{{ scheduler.routine_description }}</small>
+                        </td>
+                        <td>{{ scheduler.is_active|yesno }}</td>
+                        <td>{% include 'accounts/helpers/user_info.html' with user=scheduler.creator %}</td>
+                        <td>{{ scheduler.recipients.all|join:'<br>' }}</td>
+                        <td>{{ scheduler.created }}</td>
+                        <td>
+                            {% if scheduler.format == scheduler.FORMAT_XLSX %}
+                                <span class="badge badge-pill badge-success">{{ scheduler.get_format_display }}</span>
+                            {% elif scheduler.format == scheduler.FORMAT_XML_MRP %}
+                                <span class="badge badge-pill badge-info">{{ scheduler.get_format_display }}</span>
+                            {% else %}
+                                {{ scheduler.get_format_display }}
+                            {% endif %}
+                        </td>
+                        <td>{{ scheduler.get_context_display }}</td>
+                        <td class="text-info">{{ scheduler.content_type }}</td>
+                        <td>
+{#                            {% cache None scheduler_params_display scheduler.pk LANGUAGE_CODE %}#}
+                                {{ scheduler.get_params_display|linebreaksbr }}
+{#                            {% endcache %}#}
+                        </td>
+                        <td>
+{#                            {% cache None scheduler_fields_labels scheduler.pk LANGUAGE_CODE %}#}
+                                {% with scheduler.get_fields_labels as field_labels %}
+                                    {% if field_labels %}
+                                        <div class="text-primary" data-toggle="tooltip" data-placement="left" data-html="true" title="{{ field_labels|join:'<br>' }}"
+                                            data-template='<div class="tooltip" role="tooltip" data-color="primary" data-content-size="long"><div class="arrow"></div><div class="tooltip-inner"></div></div>'>
+                                            {% blocktrans count total_fields=scheduler.fields|length %}{{ total_fields }} field{% plural %}{{ total_fields }} fields{% endblocktrans %}
+                                        </div>
+                                    {% endif %}
+                                {% endwith %}
+{#                            {% endcache %}#}
+                        </td>
+                        <td>
+                            <span data-toggle="tooltip" data-placement="top" title="{{ scheduler.job_id }}">
+                                {% if scheduler.is_scheduled %}{{ scheduler.schedule_time }}{% else %}{{ scheduler.is_scheduled|yesno }}{% endif %}
+                            </span>
+                        </td>
+                        <td class="row-actions">
+                            <div class="actions">
+                                <a href="{% url 'outputs:scheduler_update' scheduler.pk %}" class="btn btn-xs btn-info" data-toggle="tooltip"
+                                   data-placement="top" title="{% trans 'Update' %}">
+                                    <i class="fa fa-pencil"></i> {% trans 'Update' %}
+                                </a>
+                                <a href="{% url 'outputs:scheduler_delete' scheduler.pk %}" class="btn btn-xs btn-danger" data-toggle="tooltip"
+                                   data-placement="top" title="{% trans 'Delete' %}">
+                                    <i class="fa fa-trash"></i> {% trans 'Delete' %}
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="p-4">
+            {% trans 'No data found' %}
+        </p>
+    {% endif %}
+</div>

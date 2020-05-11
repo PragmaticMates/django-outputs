@@ -1,0 +1,15 @@
+{#{% extends 'outputs/layout/exports.html' %}#}
+
+{% load i18n utils pragmatic_tags %}
+
+{#{% block content %}#}
+    <div class="queryset-actions row">
+        <div class="col-sm-auto">{% include 'helpers/filter-modal.html' with asynchronous_load=True small=True %}</div>
+        <div class="col-sm d-none d-lg-block">{% filter_values filter %}</div>
+        {% sorting %}
+        {% display_modes %}
+    </div>
+
+    {% include 'outputs/widgets/exports.html' with exports=object_list title='' %}
+    {% paginator page_obj %}
+{#{% endblock %}#}

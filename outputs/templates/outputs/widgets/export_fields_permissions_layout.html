@@ -1,0 +1,110 @@
+{% load crispy_forms_tags permissions_widget_tags i18n %}
+
+<table class="table permissions-widget">
+    <thead>
+        <tr>
+            <th>{% trans 'App & Model' %}</th>
+            <th colspan="{{ width }}">{% trans 'Fields' %}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in table %}
+            {% ifchanged row.app %}
+                <tr>
+                   <th class="app" colspan="{{ width }}">
+                        {{ row.app|translate|capfirst }}
+                   </th>
+                </tr>
+            {% endifchanged %}
+
+            {% ifchanged row.model %}
+                <tr>
+                    <td class="model">
+                        <div class="d-flex">
+                            <label class="check-container">
+                                <input name="{{ field.name }}" class="{{ field.name }}-exporter" {% if row.exporter_key in field.value or row.exporter_key in groups_permissions %}checked="checked"{% endif %} value="{{ row.exporter_key }}" type="checkbox" {% if row.exporter_key in groups_permissions %}disabled="disabled"{% endif %}/>
+                                <span class="checkmark"></span>
+                            </label>
+
+                            <span class="h4 mb-0">
+                                {{ row.model|translate|capfirst }}
+                                {% if row.format %}
+                                    {{ row.format }}
+                                {% endif %}
+                            </span>
+                        <div>
+                    </td>
+                    {% for group in row.field_groups %}
+                        <td class="align-top">
+                            {% if group %}
+                                <div class="group border-bottom mb-2">
+                                    <label class="check-container">
+                                        <input name="{{ field.name }}" class="{{ field.name }}-group" {% if group.key in field.value or group.key in groups_permissions %}checked="checked"{% endif %} value="{{ group.key }}" type="checkbox" {% if group.key in groups_permissions %}disabled="disabled"{% endif %} />
+                                        <span class="checkmark"></span>
+                                    </label>
+                                    <label class="h5">{{ group.label|translate|capfirst }}</label>
+                                </div>
+                                <div class="fields">
+                                    {% for permission in group.permissions %}
+                                         <label class="check-container d-block mb-1">
+                                            <input name="{{ field.name }}" class="{{ field.name }}-field" {% if permission.key in field.value or permission.key in groups_permissions %}checked="checked"{% endif %} value="{{ permission.key }}" type="checkbox" {% if permission.key in groups_permissions %}disabled="disabled"{% endif %} />
+                                            {{ permission.label|translate|capfirst }}
+                                            <span class="checkmark"></span>
+                                        </label>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                </tr>
+            {% endifchanged %}
+        {% endfor %}
+    </tbody>
+</table>
+
+
+<script type="text/javascript">
+   $(document).ready(function(){
+        // propagate down stream
+
+        // if exporter box (un)checked, toggle all its groups and fields
+        $('.{{ field.name }}-exporter').click(function () {
+            var checkBoxes = $(this).closest('.model').siblings().find('input:enabled');
+            checkBoxes.prop("checked", $(this).prop("checked"));
+        });
+
+        // if group box (un)checked, toggle all its fields
+        $('.{{ field.name }}-group').click(function() {
+            var fieldCheckBoxes = $(this).closest('.group').siblings().find('input:enabled');
+            fieldCheckBoxes.prop("checked", $(this).prop("checked"));
+        });
+
+        // propagate up stream
+
+        // from field input up to groups and exporter
+        $('.{{ field.name }}-field').click(function() {
+            var fieldCheckBoxes = $(this).closest('.fields').find('input:enabled');
+            var groupCheckBox = $(this).closest('.fields').siblings().find('input:enabled');
+            var groupCheckBoxes = $(this).closest('td').siblings(!'.model').find('.group input:enabled');
+            var exporterCheckBox = $(this).closest('tr').find('.model input:enabled');
+            var allFieldsChecked = $(this).is(':checked') && fieldCheckBoxes.filter(':checked').length == fieldCheckBoxes.length;
+            var allGroupsChecked = allFieldsChecked && groupCheckBoxes.filter(':checked').length == groupCheckBoxes.length;
+
+            // if all fields within group are checked
+            groupCheckBox.prop("checked", allFieldsChecked);
+
+            // if all group boxes are checked, check exporter box
+            exporterCheckBox.prop("checked", allGroupsChecked);
+        });
+
+        // from group input up to exporter
+        $('.{{ field.name }}-group').click(function() {
+            var groupCheckBoxes = $(this).closest('td').siblings(!'.model').find('.group input:enabled');
+            var exporterCheckBox = $(this).closest('tr').find('.model input:enabled');
+            var allGroupsChecked = $(this).is(':checked') && groupCheckBoxes.filter(':checked').length == groupCheckBoxes.length;
+
+            // if group box is checked and all group boxes are checked, check exporter box
+            exporterCheckBox.prop("checked", allGroupsChecked);
+        });
+    });
+</script>

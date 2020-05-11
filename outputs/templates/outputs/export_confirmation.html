@@ -1,0 +1,28 @@
+{#{% extends 'layout.html' %}#}
+
+{% load i18n crispy_forms_tags %}
+
+{#{% block title %}{% trans 'Export data' %}{% endblock %}#}
+{##}
+{#{% block content %}#}
+<div class="box-with-shadow p-5">
+    <div class="panel panel-white">
+        <div class="panel-heading">
+            <h4 class="panel-title">{% trans 'Confirm export' %}</h4>
+            <p>
+                {% blocktrans count number=objects_count %}{{ number }} object is about to be exported{% plural %}{{ number }} objects are about to be exported{% endblocktrans %}
+            </p>
+        </div>
+        <div class="panel-body">
+            <form method="post">
+                {% csrf_token %}
+                {{ form|crispy }}
+                <div class="form-actions">
+                    <a href="{{ back_url }}" class="btn btn-default mt-1"><i class="fa fa-reply"></i>{% trans 'Back' %}</a>
+                    <button type="submit" class="btn btn-danger mt-1">{% trans 'Export' %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{#{% endblock %}#}

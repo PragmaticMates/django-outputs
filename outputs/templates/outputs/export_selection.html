@@ -1,0 +1,91 @@
+{#{% extends 'layout.html' %}#}
+
+{% load i18n crispy_forms_tags %}
+
+{#{% block title %}{% trans 'Export data' %}{% endblock %}#}
+
+{#{% block content %}#}
+<div class="box-with-shadow p-5">
+    <div class="panel panel-white">
+        <div class="panel-heading">
+            <h4 class="panel-title">{% trans 'Select recipients and fields' %}</h4>
+            <p>
+                {% blocktrans count number=objects_count %}{{ number }} object is about to be exported{% plural %}{{ number }} objects are about to be exported{% endblocktrans %}
+            </p>
+        </div>
+        <div class="panel-body">
+            <form method="post">
+                {% crispy form %}
+                <div class="form-actions">
+                    <a href="{{ back_url }}" class="btn btn-default mt-1"><i class="fa fa-reply"></i>{% trans 'Back' %}</a>
+                    {% if view.limit and objects_count > view.limit %}
+                        <p class="d-inline-block text-danger ml-3">
+                            {% blocktrans count limit=view.limit %}Output limited to {{ limit }} object{% plural %}Output limited to {{ limit }} objects{% endblocktrans %}
+                        </p>
+                    {% else %}
+                        <button type="submit" class="btn btn-danger mt-1">{% trans 'Export' %}</button>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    $(document).ready(function(){
+        // propagate down stream
+
+        // toggle options according to select_all
+        var all = $('.all');
+
+        all.click(function() {
+            $('.group-option:enabled').prop('checked', $(this).prop("checked"));
+            $('.option:enabled').prop('checked', $(this).prop("checked"));
+        });
+
+        // toggle options according to group option
+        $('.group-option').click(function() {
+            var options = $(this).closest('.group').find('.option:enabled');
+            options.prop('checked', $(this).prop("checked"));
+        });
+
+        // propagate up stream
+
+        // toggle group and select_all according to options
+        $('.option').click(function() {
+            var options = $(this).closest('.group').find('.option:enabled');
+            var groupOption = $(this).closest('.group').find('.group-option:enabled');
+            var groupOptions = $(this).closest('.group').siblings().find('.group-option:enabled');
+            var allOptionsChecked = $(this).is(':checked') && options.filter(':checked').length === options.length;
+            var allGroupsChecked = allOptionsChecked && groupOptions.filter(':checked').length === groupOptions.length;
+
+            // if all options within group are checked
+            groupOption.prop("checked", allOptionsChecked);
+
+            // if all group options are checked, check select all
+            all.prop("checked", allGroupsChecked);
+        });
+
+        // toggle select_all according to groups
+        $('.group-option').click(function() {
+            var groupOptions = $('.group-option:enabled');
+            var allGroupsChecked = $(this).is(':checked') && groupOptions.filter(':checked').length === groupOptions.length;
+
+            // if group option is checked and all group options are checked, check select_all
+            all.prop("checked", allGroupsChecked);
+        });
+
+        // toggle initial state
+        all.prop("checked", $('.option:checked').length === $('.option:enabled').length && $('.option:enabled').length !== 0);
+        all.prop("disabled", $('.option:enabled').length === 0);
+
+        $('.group-option').each(function() {
+            var options = $(this).closest('.group').find('.option');
+            var allOptionsDisabled = options.filter(':enabled').length === 0;
+
+            $(this).prop("checked", options.filter(':checked').length === options.filter(':enabled').length && !allOptionsDisabled);
+            $(this).prop("disabled", allOptionsDisabled);
+        });
+    });
+</script>
+{#{% endblock %}#}

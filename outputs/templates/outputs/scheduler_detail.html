@@ -1,0 +1,90 @@
+{#{% extends 'outputs/layout/scheduler.html' %}#}
+
+{% load i18n static cache %}
+
+{#{% block content %}#}
+{{ block.super }}
+<div class="row">
+    <div class="col-md-4">
+        <div class="box-with-shadow p-4 h-100">
+            <h4>{% trans 'Details' %}</h4>
+            <dl>
+                <dt>{% trans 'Content type' %}</dt>
+                <dd>{{ scheduler.content_type }}</dd>
+
+                <dt>{% trans 'Routine' %}</dt>
+                <dd>{{ scheduler.get_routine_display }}</dd>
+
+                <dt>{% trans 'Active' %}</dt>
+                <dd>{{ scheduler.is_active|yesno }}</dd>
+
+                <dt>{% trans 'Format' %}</dt>
+                <dd>{{ scheduler.get_format_display }}</dd>
+
+                <dt>{% trans 'Context' %}</dt>
+                <dd>{{ scheduler.get_context_display|default:'-' }}</dd>
+
+                <dt>{% trans 'Scheduled' %}</dt>
+                <dd>
+                    <span data-toggle="tooltip" data-placement="top" title="{{ scheduler.job_id }}">
+                        {{ scheduler.is_scheduled|yesno }}
+                    </span>
+                </dd>
+
+                <dt>{% trans 'Language' %}</dt>
+                <dd>{{ scheduler.get_language_display }}</dd>
+
+                <dt>{% trans 'Fields' %}</dt>
+                <dd>
+                    {% cache None scheduler_fields_labels scheduler.pk LANGUAGE_CODE %}
+                        {% with scheduler.get_fields_labels as field_labels %}
+                            {% if field_labels %}
+                                <div class="text-primary" data-toggle="tooltip" data-placement="left" data-html="true" title="{{ field_labels|join:'<br>' }}"
+                                    data-template='<div class="tooltip" role="tooltip" data-color="primary" data-content-size="long"><div class="arrow"></div><div class="tooltip-inner"></div></div>'>
+                                    {% blocktrans count total_fields=scheduler.fields|length %}{{ total_fields }} field{% plural %}{{ total_fields }} fields{% endblocktrans %}
+                                </div>
+                            {% endif %}
+                        {% endwith %}
+                    {% endcache %}
+                </dd>
+
+                <dt>{% trans 'Params' %}</dt>
+                <dd>
+                    {% cache None scheduler_params_display scheduler.pk LANGUAGE_CODE %}
+                        {{ scheduler.get_params_display|linebreaksbr }}
+                    {% endcache %}
+                </dd>
+
+                <dt>{% trans 'Created' %}</dt>
+                <dd>{{ scheduler.created }}</dd>
+            </dl>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="box-with-shadow p-4">
+            <h4>{% trans 'Executions' %}</h4>
+
+            <div class="members">
+                {% for datetime in scheduler.executions %}
+                    {{ datetime }}<br>
+                {% empty %}
+                    {% trans 'No data found' %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="box-with-shadow p-4">
+            <h4>{% trans 'Recipients' %}</h4>
+
+            <div class="members">
+                {% for user in scheduler.recipients.all %}
+                    {% include 'accounts/helpers/user_info.html' %}
+                {% empty %}
+                    {% trans 'No data found' %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{#{% endblock %}#}

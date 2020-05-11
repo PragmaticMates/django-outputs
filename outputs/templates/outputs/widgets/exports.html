@@ -1,0 +1,103 @@
+{% load i18n static humanize cache utils pragmatic_tags %}
+{% get_current_language as LANGUAGE_CODE %}
+
+{% if title %}
+    <div class="d-flex">
+        <h4 class="mb-4 flex-grow">{{ title }}</h4>
+    </div>
+{% endif %}
+
+<div class="box-with-shadow">
+    {% if exports.exists %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>{% trans 'Creator' %}</th>
+                        <th>{% trans 'Recipients' %}</th>
+                        <th>{% trans 'Created' %}</th>
+                        <th>{% trans 'Format' %}</th>
+                        <th>{% trans 'Context' %}</th>
+                        <th>{% trans 'Model' %}</th>
+                        <th>{% trans 'Total' %}</th>
+                        <th>{% trans 'Params' %}</th>
+                        <th>{% trans 'Fields' %}</th>
+                        <th>{% trans 'Status' %}</th>
+                        <th>{% trans 'Actions' %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for export in exports %}
+                    <tr>
+                        <td>{{ export.id }}</td>
+                        <td>{% include 'accounts/helpers/user_info.html' with user=export.creator %}</td>
+                        <td>{{ export.recipients.all|join:'<br>' }}</td>
+                        <td>{{ export.created }}</td>
+                        <td>
+                            {% if export.format == export.FORMAT_XLSX %}
+                                <span class="badge badge-pill badge-info">{{ export.get_format_display }}</span>
+                            {% elif export.format == export.FORMAT_XML_MRP %}
+                                <span class="badge badge-pill badge-warning">{{ export.get_format_display }}</span>
+                            {% elif export.format == export.FORMAT_PDF %}
+                                <span class="badge badge-pill badge-light">{{ export.get_format_display }}</span>
+                            {% else %}
+                                {{ export.get_format_display }}
+                            {% endif %}
+                        </td>
+                        <td>{{ export.get_context_display }}</td>
+                        <td class="text-info">{{ export.content_type }}</td>
+                        <td>
+                            <a href="{{ export.get_items_url }}" class="text-primary">
+                                {% blocktrans count total_items=export.total %}{{ total_items }} item{% plural %}{{ total_items }} items{% endblocktrans %}
+                            </a>
+                        </td>
+                        <td>
+                            {% cache None export_params_display export.pk LANGUAGE_CODE %}
+                                {{ export.get_params_display|linebreaksbr }}
+                            {% endcache %}
+                        </td>
+                        <td>
+                            {% cache None export_fields_labels export.pk LANGUAGE_CODE %}
+                                {% with export.get_fields_labels as field_labels %}
+                                    {% if field_labels %}
+                                        <div class="text-primary" data-toggle="tooltip" data-placement="left" data-html="true" title="{{ field_labels|join:'<br>' }}"
+                                            data-template='<div class="tooltip" role="tooltip" data-color="primary" data-content-size="long"><div class="arrow"></div><div class="tooltip-inner"></div></div>'>
+                                            {% blocktrans count total_fields=export.fields|length %}{{ total_fields }} field{% plural %}{{ total_fields }} fields{% endblocktrans %}
+                                        </div>
+                                    {% endif %}
+                                {% endwith %}
+                            {% endcache %}
+                        </td>
+                        <td>
+                            {% if export.status == export.STATUS_PENDING %}
+                                <span class="badge badge-pill badge-info">{{ export.get_status_display }}</span>
+                            {% elif export.status == export.STATUS_PROCESSING %}
+                                <span class="badge badge-pill badge-warning">{{ export.get_status_display }}</span>
+                            {% elif export.status == export.STATUS_FAILED %}
+                                <span class="badge badge-pill badge-danger">{{ export.get_status_display }}</span>
+                            {% elif export.status == export.STATUS_FINISHED %}
+                                <span class="badge badge-pill badge-success">{{ export.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="row-actions">
+                            <div class="actions">
+                                <a href="{{ export.get_absolute_url }}" class="btn btn-xs btn-info" data-toggle="tooltip" data-placement="top" title="{% trans 'Filter objects' %}">
+                                    <i class="fa fa-search"></i> {% trans 'Filter objects' %}
+                                </a>
+                                <a href="{% url 'outputs:scheduler_create_from_export' export.pk %}" class="btn btn-xs btn-info" data-toggle="tooltip" data-placement="top" title="{% trans 'Schedule' %}">
+                                    <i class="fa fa-alarm-clock"></i> {% trans 'Schedule' %}
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="p-4">
+            {% trans 'No data found' %}
+        </p>
+    {% endif %}
+</div>

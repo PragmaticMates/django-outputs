@@ -1,0 +1,11 @@
+{% load i18n %}
+
+<div class="row">
+    <h2 class="col-md-9 d-flex align-items-center mb-4">{{ scheduler.content_type }}</h2>
+    <div class="col-md-3 mb-4">
+        <dl>
+            <dt>{% trans 'Creator' %}</dt>
+            <dd>{{ scheduler.creator }}</dd>
+        </dl>
+    </div>
+</div>

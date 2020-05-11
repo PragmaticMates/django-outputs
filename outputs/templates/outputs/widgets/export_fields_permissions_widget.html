@@ -1,0 +1,149 @@
+{% load crispy_forms_tags permissions_widget_tags i18n %}
+
+<table class="table permissions-widget">
+    <thead>
+        <tr>
+            <th>{% trans 'App & Model' %}</th>
+            <th colspan="{{ width }}">{% trans 'Fields' %}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in table %}
+            {% ifchanged row.app %}
+                <tr>
+                   <th class="app" colspan="{{ width }}">
+                        {{ row.app|translate|capfirst }}
+                   </th>
+                </tr>
+            {% endifchanged %}
+
+            {% ifchanged row.model %}
+                <tr>
+                    <td class="model">
+                        {{ row.model|translate|capfirst }}
+                        {% if row.format %}
+                            {{ row.format }}
+                        {% endif %}
+                        <label class="check-container">
+                            <input name="{{ name }}" class="{{ name }}-exporter" {% if row.exporter_key in value %}checked="checked"{% endif %} value="{{ row.exporter_key }}" type="checkbox" />
+                            <br>
+                            <span class="checkmark"></span>
+                        </label>
+                    </td>
+                    {% for group in row.field_groups %}
+                        <td class="align-top">
+                            {% if group %}
+                                <div class="group">
+                                    <label>{{ group.label|translate|capfirst }}</label>
+                                    <label class="check-container">
+                                        <input name="{{ name }}" class="{{ name }}-group" {% if group.key in value %}checked="checked"{% endif %} value="{{ group.key }}" type="checkbox" />
+                                        <br>
+                                        <span class="checkmark"></span>
+                                    </label>
+                                </div>
+                                <div class="fields">
+                                    {% for permission in group.permissions %}
+                                         <label class="check-container">
+                                            <input name="{{ name }}" class="{{ name }}-field" {% if permission.field in value or group.key in value %}checked="checked"{% endif %} value="{{ permission.key }}" type="checkbox" />
+                                            {{ permission.label|translate|capfirst }}
+                                            <br>
+                                            <span class="checkmark"></span>
+                                        </label>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                </tr>
+            {% endifchanged %}
+        {% endfor %}
+    </tbody>
+</table>
+
+
+<script type="text/javascript">
+   $(document).ready(function(){
+        // propagate down stream
+        $('.{{ name }}-exporter').on('input', function(event) {
+            var checkBoxes = $(event.currentTarget).closest('.model').siblings().find('input');
+            checkBoxes.prop("checked", $(event.currentTarget).prop("checked"));
+        });
+
+        $('.{{ name }}-group').on('input', function(event) {
+            var checkBoxes = $(event.currentTarget).closest('.group').siblings().find('input');
+            checkBoxes.prop("checked", $(event.currentTarget).prop("checked"));
+        });
+
+        // propagate up sream
+
+        // from field input upstream
+        $('.{{ name }}-field').on('input', function(event) {
+            var currentCheckBox = $(event.currentTarget)
+            var fieldCheckBoxes = currentCheckBox.closest('.fields').find('input');
+            var groupCheckBox = currentCheckBox.closest('.fields').siblings().find('input');
+            var exporterCheckBox = currentCheckBox.closest('td').siblings('.model').find('input');
+
+            if (currentCheckBox.prop("checked") == true) {
+                var checkedBoxes = 0;
+                fieldCheckBoxes.each(function() {
+                    if ($(this).prop("checked") == currentCheckBox.prop("checked")) {
+                        checkedBoxes++;
+                    }
+                });
+
+                if (checkedBoxes == fieldCheckBoxes.length) {
+                    groupCheckBox.prop("checked", currentCheckBox.prop("checked"));
+
+                    // from group up
+                    var groupCheckBoxes = currentCheckBox.closest('td').siblings(!'.model').find('.group').find('input');
+
+                    var checkedBoxes = 0;
+                    groupCheckBoxes.each(function() {
+                        if ($(this).prop("checked") == currentCheckBox.prop("checked")) {
+                            checkedBoxes++;
+                        }
+                    });
+
+                    if (checkedBoxes == groupCheckBoxes.length) {
+                        exporterCheckBox.prop("checked", currentCheckBox.prop("checked"));
+                    }
+                }
+
+
+            } else {
+                if (groupCheckBox.prop("checked") != currentCheckBox.prop("checked")) {
+                      groupCheckBox.prop("checked", currentCheckBox.prop("checked"));
+                }
+
+                if (exporterCheckBox.prop("checked") != currentCheckBox.prop("checked")) {
+                      exporterCheckBox.prop("checked", currentCheckBox.prop("checked"));
+                }
+            }
+        });
+
+        // from group input up stream
+        $('.{{ name }}-group').on('input', function(event) {
+            var currentCheckBox = $(event.currentTarget);
+            var groupCheckBoxes = currentCheckBox.closest('td').siblings(!'.model').find('.group').find('input');
+            var exporterCheckBox = currentCheckBox.closest('td').siblings('.model').find('input');
+
+            if (currentCheckBox.prop("checked") == true) {
+                var checkedBoxes = 0;
+                groupCheckBoxes.each(function() {
+                    if ($(this).prop("checked") == currentCheckBox.prop("checked")) {
+                        checkedBoxes++;
+                    }
+                });
+
+                if (checkedBoxes == groupCheckBoxes.length) {
+                    exporterCheckBox.prop("checked", currentCheckBox.prop("checked"));
+                }
+            } else {
+                if (exporterCheckBox.prop("checked") != currentCheckBox.prop("checked")) {
+                      exporterCheckBox.prop("checked", currentCheckBox.prop("checked"));
+                }
+            }
+        });
+
+    });
+</script>
