@@ -1,8 +1,8 @@
 from django.contrib.auth import get_user_model
-# from swida.utils import apm_custom_context
+from pragmatic.signals import apm_custom_context
 
 
-# @apm_custom_context('tasks')
+@apm_custom_context('tasks')
 def notify_about_executed_export(export):
     from whistle.helpers import notify
     notify_users = get_user_model().objects \
@@ -14,6 +14,6 @@ def notify_about_executed_export(export):
         notify(None, user, 'EXPORT_EXECUTED', actor=export.creator, object=export, target=export.content_type)
 
 
-# @apm_custom_context('tasks')
+@apm_custom_context('tasks')
 def schedule_scheduler(scheduler):
     scheduler.schedule()

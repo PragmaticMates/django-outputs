@@ -5,7 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.forms import BooleanField, CheckboxInput, TextInput, Textarea
 from django.utils.translation import ugettext_lazy as _
 
-from swida.core.accounts.forms import UsersWidget
+# from swida.core.accounts.forms import UsersWidget
 from django.contrib.auth import get_user_model
 from outputs.models import Scheduler, AbstractExport
 from outputs.widgets import CheckboxSelectMultipleWithDisabled, Legend
@@ -16,7 +16,7 @@ class ChooseExportFieldsForm(forms.Form):
     recipients = forms.ModelMultipleChoiceField(
         label=_('Recipients'),
         queryset=get_user_model().objects.all(),
-        widget=UsersWidget(),
+        # widget=UsersWidget(),
         required=True,
     )
     filename = forms.CharField(label=_('File name'))
@@ -119,7 +119,7 @@ class SchedulerForm(forms.ModelForm):
     recipients = forms.ModelMultipleChoiceField(
         label=_('Recipients'),
         queryset=get_user_model().objects.all(),
-        widget=UsersWidget(),
+        # widget=UsersWidget(),
         required=True,
     )
 

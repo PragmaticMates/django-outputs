@@ -6,13 +6,12 @@ from django.forms import HiddenInput
 from django.utils.translation import ugettext_lazy as _
 from django_select2.forms import Select2Widget
 from django.contrib.auth import get_user_model
-from swida.core.accounts.mixins import UserFilterMixin
 from outputs.models import Export, Scheduler
 from pragmatic.forms import SingleSubmitFormHelper
 from pragmatic.filters import SliderFilter
 
 
-class ExportFilter(UserFilterMixin, django_filters.FilterSet):
+class ExportFilter(django_filters.FilterSet):
     created = django_filters.DateFromToRangeFilter()
     total = SliderFilter(label=_('Total items'), step=10, has_range=True, segment='outputs.Export.total')
     creator = django_filters.ModelChoiceFilter(queryset=get_user_model().objects.all(), widget=Select2Widget)
@@ -30,7 +29,6 @@ class ExportFilter(UserFilterMixin, django_filters.FilterSet):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.prepare_user_filters(['creator'], self.data)
         self.form.fields['format'].empty_label = _("Doesn't matter")
         self.form.fields['context'].empty_label = _("Doesn't matter")
         self.helper = SingleSubmitFormHelper()
@@ -81,7 +79,7 @@ class ExportFilterSet(django_filters.FilterSet):
         return queryset.filter(id__in=value.object_list)
 
 
-class SchedulerFilter(UserFilterMixin, django_filters.FilterSet):
+class SchedulerFilter(django_filters.FilterSet):
     created = django_filters.DateFromToRangeFilter()
     creator = django_filters.ModelChoiceFilter(queryset=get_user_model().objects.all(), widget=Select2Widget)
     content_type = django_filters.ModelChoiceFilter(
@@ -98,7 +96,6 @@ class SchedulerFilter(UserFilterMixin, django_filters.FilterSet):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.prepare_user_filters(['creator'], self.data)
         self.form.fields['format'].empty_label = _("Doesn't matter")
         self.form.fields['context'].empty_label = _("Doesn't matter")
         self.helper = SingleSubmitFormHelper()

@@ -24,39 +24,6 @@ from outputs.cron import schedule_export
 from outputs.querysets import ExportQuerySet, SchedulerQuerySet
 
 from pragmatic.templatetags.pragmatic_tags import filtered_values
-# from swida.core.accounts.models import Team
-# from invoicing.models import Invoice
-# # TODO: add the rest
-# from swida.core.board.models import Task, Inquiry, Announcement
-# from swida.core.chronicle.models import Event
-# from swida.core.directory.models import Company, Carrier, Activity, Person
-# from swida.core.helpdesk.models import Article
-# from swida.core.logistics.models import Offer, Order, Option, ShippingOrder
-
-from swida.settings import common as app_common_settings
-
-# related_models = [
-#     Invoice,  # billing
-#
-#     # # ValueError: Cannot deconstruct a GM2MField pointing to a model that is swapped in place of more than one model (None and AUTH_USER_MODEL)
-#     # possible solution: https://django-gm2m.readthedocs.io/en/stable/features.html#manual-creation-on-existing-model
-#     #User,  # accounts
-#     Team,
-#
-#     Task, Inquiry, Announcement,  # board
-#     Event,  # chronicle
-#
-#     Company, Carrier, Activity,  #Person, # directory
-#
-#     Article,  # helpdesk
-#     Offer, Order, Option, ShippingOrder,  # logistics
-# ]
-#
-# exporters_module_mapping = {
-#     Invoice: 'swida.core.billing.exporters',
-#     Order: {'STATISTICS': 'swida.core.statistics.exporters'},
-# }
-#
 
 
 exporters_module_mapping = settings.EXPORTERS_MODULE_MAPPING

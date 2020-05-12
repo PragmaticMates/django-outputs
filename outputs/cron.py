@@ -4,7 +4,7 @@ from outputs import jobs
 
 
 def schedule_export(scheduler_id):
-    from swida.core.outputs.models import Scheduler
+    from outputs.models import Scheduler
 
     # get scheduler by its identifier
     scheduler = Scheduler.objects.get(pk=scheduler_id)
