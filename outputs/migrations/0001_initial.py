@@ -57,7 +57,7 @@ class Migration(migrations.Migration):
                 ('total', models.PositiveIntegerField(default=0)),
                 ('content_type', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='contenttypes.ContentType')),
                 ('creator', models.ForeignKey(blank=True, default=None, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='export_where_creator', to=settings.AUTH_USER_MODEL)),
-                ('items', gm2m.fields.GM2MField('invoicing.Invoice', 'accounts.Team', 'board.Task', 'board.Inquiry', 'board.Announcement', 'chronicle.Event', 'directory.Company', 'directory.Carrier', 'directory.Activity', 'helpdesk.Article', 'logistics.Offer', 'logistics.Order', 'logistics.Option', 'logistics.ShippingOrder', related_name='exports_where_item', through_fields=('gm2m_src', 'gm2m_tgt', 'gm2m_ct', 'gm2m_pk'))),
+                ('items', gm2m.fields.GM2MField(related_name='exports_where_item', through_fields=('gm2m_src', 'gm2m_tgt', 'gm2m_ct', 'gm2m_pk'))),
                 ('recipients', models.ManyToManyField(related_name='export_where_recipient', to=settings.AUTH_USER_MODEL)),
             ],
             options={
