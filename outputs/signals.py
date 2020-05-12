@@ -8,11 +8,11 @@ from whistle.helpers import notify
 from django.contrib.auth import get_user_model
 from outputs.models import Export, Scheduler
 from outputs.signal_tasks import notify_about_executed_export, schedule_scheduler
-from swida.utils import SignalsHelper  # , apm_custom_context
+from pragmatic.signals import SignalsHelper, apm_custom_context
 
 
 @receiver(post_save, sender=Export)
-# @apm_custom_context('signals')
+@apm_custom_context('signals')
 def export_executed_post_save(sender, instance, created, **kwargs):
     if created:
         scheduler = django_rq.get_scheduler('default')
@@ -26,7 +26,7 @@ def export_executed_post_save(sender, instance, created, **kwargs):
 
 
 @receiver(pre_save, sender=Scheduler)
-# @apm_custom_context('signals')
+@apm_custom_context('signals')
 def reschedule_scheduler(sender, instance, **kwargs):
     """
     Signal to check if routine of the scheduler changed.
@@ -36,7 +36,7 @@ def reschedule_scheduler(sender, instance, **kwargs):
 
 
 @receiver(pre_delete, sender=Scheduler)
-# @apm_custom_context('signals')
+@apm_custom_context('signals')
 def cancel_scheduler(sender, instance, **kwargs):
     """
     Delete redis queue job when scheduler is deleted
@@ -45,7 +45,7 @@ def cancel_scheduler(sender, instance, **kwargs):
 
 
 @receiver(post_save, sender=Scheduler)
-# @apm_custom_context('signals')
+@apm_custom_context('signals')
 def reschedule_scheduler(sender, instance, created, **kwargs):
     """
     Signal to notify when scheduler is created.
