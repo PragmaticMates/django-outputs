@@ -15,7 +15,7 @@ class OutputsConfig(AppConfig):
 
     def schedule_jobs(self):
         print('Scheduling outputs jobs...')
-        from swida.core.outputs.models import Scheduler
+        from outputs.models import Scheduler
 
         for output_scheduler in Scheduler.objects.active():
             output_scheduler.schedule()

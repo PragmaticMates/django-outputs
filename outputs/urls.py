@@ -2,7 +2,6 @@ from django.urls import path
 from django.utils.translation import pgettext_lazy
 
 from outputs.views import ExportListView, SchedulerListView, SchedulerCreateView, SchedulerUpdateView, SchedulerDetailView, SchedulerDeleteView
-# from swida.views import ChangelogView
 
 app_name = 'outputs'
 

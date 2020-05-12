@@ -106,7 +106,7 @@ class ExportFieldsPermissionsMixin(object):
     def load_all_exportable_fields(self):
         exporters = []
 
-        from swida.core.outputs.mixins import FilterExporterMixin
+        from outputs.mixins import FilterExporterMixin
         for cls in FilterExporterMixin.__subclasses__():
             if hasattr(cls, 'selectable_fields'):
                 exporters.append(cls)
