@@ -23,7 +23,7 @@ class ExportFilter(django_filters.FilterSet):
     class Meta:
         model = Export
         fields = [
-            'id', 'created', 'format', 'context', 'content_type', 'status'
+            'id', 'created', 'format', 'context', 'content_type', 'status',
             'total', 'creator'
         ]
 
