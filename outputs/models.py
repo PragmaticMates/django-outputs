@@ -352,13 +352,13 @@ class Scheduler(AbstractExport):
         #     return "* * * * *"
 
         if self.routine == self.ROUTINE_DAILY:
-            return "0 6 * * *"
+            return "0 5 * * *"
 
         if self.routine == self.ROUTINE_WEEKLY:
-            return "0 6 * * 1"
+            return "0 5 * * 1"
 
         if self.routine == self.ROUTINE_MONTHLY:
-            return "0 6 1 * *"
+            return "0 5 1 * *"
 
         raise NotImplementedError()
 
