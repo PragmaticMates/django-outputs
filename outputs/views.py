@@ -12,7 +12,6 @@ from outputs.models import Export, Scheduler
 class ExportListView(LoginPermissionRequiredMixin, DisplayListViewMixin, SortingListViewMixin, ListView):
     model = Export
     filter_class = ExportFilter
-    paginate_by = 10
     permission_required = 'outputs.list_export'
     displays = ['table']
     paginate_values = [10, 50, 100]
@@ -40,7 +39,6 @@ class ExportListView(LoginPermissionRequiredMixin, DisplayListViewMixin, Sorting
 class SchedulerListView(LoginPermissionRequiredMixin, DisplayListViewMixin, SortingListViewMixin, ListView):
     model = Scheduler
     filter_class = SchedulerFilter
-    paginate_by = 10
     permission_required = 'outputs.list_scheduler'
     displays = ['table']
     paginate_values = [10, 50, 100]
