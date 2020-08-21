@@ -56,7 +56,12 @@ class AbstractExport(models.Model):
     query_string = models.TextField(_('query string'), blank=True, default='')
     creator = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name=_('creator'), on_delete=models.PROTECT, related_name="%(class)s_where_creator",
                                 blank=True, null=True, default=None)
-    recipients = models.ManyToManyField(get_user_model(), verbose_name=_('recipients'), related_name="%(class)s_where_recipient")
+    recipients = models.ManyToManyField(get_user_model(), verbose_name=_('recipients'), related_name="%(class)s_where_recipient", blank=True)
+    emails = ArrayField(
+        verbose_name=_('emails'),
+        base_field=models.CharField(max_length=33),
+        blank=True, default=list,
+    )
     created = models.DateTimeField(_('created'), auto_now_add=True)
     modified = models.DateTimeField(_('modified'), auto_now=True)
 
