@@ -2,7 +2,7 @@
 from bulk_update.helper import bulk_update
 from django.db import migrations
 
-from outputs.models import Export, Scheduler
+from outputs.models import Export
 
 
 def set_metadata(*args, **kwargs):
@@ -15,17 +15,6 @@ def set_metadata(*args, **kwargs):
 
     print('>>> bulk update started ...')
     bulk_update(exports, update_fields=['emails'])
-    print('>>> bulk update finished')
-
-    print('Init emails in Schedulers ...')
-    schedulers = Scheduler.objects.all()
-
-    for scheduler in schedulers:
-        emails = list(scheduler.recipients.values_list('email', flat=True))
-        scheduler.emails = emails
-
-    print('>>> bulk update started ...')
-    bulk_update(schedulers, update_fields=['emails'])
     print('>>> bulk update finished')
 
 
