@@ -27,7 +27,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='export',
             name='items',
-            field=gm2m.fields.GM2MField('invoicing.Invoice', 'accounts.Team', 'board.Task', 'board.Inquiry', 'board.Announcement', 'chronicle.Event', 'directory.Company', 'directory.Carrier', 'directory.Activity', 'helpdesk.Article', 'logistics.Offer', 'logistics.Order', 'logistics.Option', 'logistics.ShippingOrder', related_name='exports_where_item', through_fields=('gm2m_src', 'gm2m_tgt', 'gm2m_ct', 'gm2m_pk')),
+            field=gm2m.fields.GM2MField(*settings.OUTPUTS_RELATED_MODELS, related_name='exports_where_item', through_fields=('gm2m_src', 'gm2m_tgt', 'gm2m_ct', 'gm2m_pk')),
         ),
         migrations.AlterField(
             model_name='export',

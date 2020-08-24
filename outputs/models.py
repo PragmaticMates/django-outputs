@@ -26,8 +26,8 @@ from outputs.querysets import ExportQuerySet, SchedulerQuerySet
 from pragmatic.templatetags.pragmatic_tags import filtered_values
 
 
-exporters_module_mapping = settings.EXPORTERS_MODULE_MAPPING
-related_models = settings.RELATED_MODELS
+exporters_module_mapping = settings.OUTPUTS_EXPORTERS_MODULE_MAPPING
+related_models = settings.OUTPUTS_RELATED_MODELS
 
 
 class AbstractExport(models.Model):
@@ -57,11 +57,6 @@ class AbstractExport(models.Model):
     creator = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name=_('creator'), on_delete=models.PROTECT, related_name="%(class)s_where_creator",
                                 blank=True, null=True, default=None)
     recipients = models.ManyToManyField(get_user_model(), verbose_name=_('recipients'), related_name="%(class)s_where_recipient", blank=True)
-    emails = ArrayField(
-        verbose_name=_('emails'),
-        base_field=models.CharField(max_length=33),
-        blank=True, default=list,
-    )
     created = models.DateTimeField(_('created'), auto_now_add=True)
     modified = models.DateTimeField(_('modified'), auto_now=True)
 
@@ -180,6 +175,11 @@ class Export(AbstractExport):
     status = models.CharField(_('status'), choices=STATUSES, max_length=10, default=STATUS_PENDING)
     items = GM2MField(*related_models, related_name='exports_where_item')
     total = models.PositiveIntegerField(_('total items'), default=0)
+    emails = ArrayField(
+        verbose_name=_('emails'),
+        base_field=models.EmailField(),
+        default=list,
+    )
     objects = ExportQuerySet.as_manager()
     history = AuditlogHistoryField()
 
