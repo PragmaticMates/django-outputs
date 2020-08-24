@@ -16,6 +16,9 @@ class Migration(migrations.Migration):
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
+    for dependency in getattr(settings, 'OUTPUTS_MIGRATION_DEPENDENCIES', []):
+        dependencies.append(dependency)
+
     operations = [
         migrations.CreateModel(
             name='Scheduler',
