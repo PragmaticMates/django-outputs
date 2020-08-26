@@ -236,7 +236,7 @@ class Export(AbstractExport):
 
 
 class Scheduler(AbstractExport):
-    # ROUTINE_OFTEN = 'OFTEN'                 # for debug purposes
+    ROUTINE_OFTEN = 'OFTEN'                 # for debug purposes
     ROUTINE_DAILY = 'DAILY'                 # every morning at 8:00
     ROUTINE_WEEKLY = 'WEEKLY'               # every monday at 8:00
     ROUTINE_MONTHLY = 'MONTHLY'             # at 1st of current month TODO: reports will be for the previous month
@@ -248,6 +248,7 @@ class Scheduler(AbstractExport):
     ]
 
     ROUTINE_DESCRIPTIONS = {
+        # ROUTINE_OFTEN: _('every minute'),  # 6 UTC
         ROUTINE_DAILY: _('at 8:00'),  # 6 UTC
         ROUTINE_WEEKLY: _('on Monday'),
         ROUTINE_MONTHLY: _('on the first day'),

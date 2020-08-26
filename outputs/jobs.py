@@ -1,4 +1,4 @@
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMultiAlternatives
 from django.db.models import Q
 from django.utils import translation
 from django.utils.translation import ugettext_lazy as _
@@ -15,7 +15,7 @@ def execute_export(exporter_class, exporter_params, language):
 
     # save export to DB
     export = exporter.save_export()
-
+    
     # send mail with export to recipients
     export.send_mail(language, exporter_params.get('filename', None))
 
@@ -51,9 +51,8 @@ def mail_export(export_id, language, filename=None):
 
         # details
         details = '{}: {}\n'.format(_('Creator'), export.creator)
-        details += '{}: {}\n\n'.format(_('Total items'), num_items)
-        details += exporter.get_message_body()
-        details += '\n\n{}: {}\n\n'.format(_('Error'), str(e))
+        details += '{}: {}\n\n'.format(_('Export ID'), str(export.id))
+        details += '{}: {}\n'.format(_('Error'), str(e))
 
         notify_users = get_user_model().objects \
             .active()\
@@ -73,6 +72,7 @@ def mail_export(export_id, language, filename=None):
         exporter,
         count=num_items,
         recipient_list=export.recipients.values_list('email', flat=True),
+        # recipient_list=export.emails,
         subject='{}: {}'.format(_('Export'), verbose_name),
         filename=filename
     )
@@ -87,11 +87,11 @@ def mail_export(export_id, language, filename=None):
 
 def get_message(exporter, count, recipient_list, subject, filename=None):
     # message body
-    body = '{}: {}\n\n'.format(_('Total items'), count)
-    body += exporter.get_message_body()
+    body = exporter.get_message_body(count)
 
     # prepare message
-    message = EmailMessage(subject, body, to=recipient_list)
+    message = EmailMultiAlternatives(subject=subject, to=recipient_list)
+    message.attach_alternative(body, "text/html")
 
     # get the stream and set the correct mimetype
     message.attach(

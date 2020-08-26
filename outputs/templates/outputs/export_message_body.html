@@ -1,0 +1,6 @@
+{% load i18n %}
+{% trans 'Total items' %}: {{ count }}
+<br><br>
+{% for param, field_data in filtered_values.items %}
+    {{ field_data.label }}: {{ field_data.value }}<br>
+{% endfor %}

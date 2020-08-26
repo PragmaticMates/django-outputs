@@ -46,7 +46,7 @@ def cancel_scheduler(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Scheduler)
 @apm_custom_context('signals')
-def reschedule_scheduler(sender, instance, created, **kwargs):
+def notify_about_scheduler(sender, instance, created, **kwargs):
     """
     Signal to notify when scheduler is created.
     """

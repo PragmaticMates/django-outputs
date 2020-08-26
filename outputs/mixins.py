@@ -8,6 +8,7 @@ from django.contrib import messages
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count, QuerySet
 from django.http import HttpResponse
+from django.template import loader
 from django.utils import translation
 from django.utils.timezone import localtime
 from django.utils.translation import ugettext_lazy as _
@@ -250,18 +251,10 @@ class FilterExporterMixin(object):
 
         return self.filter.qs
 
-    def get_message_body(self):
-        body = ''
-
-        filter_values = filtered_values(self.filter, self.params)
-
-        for field in filter_values.keys():
-            field_data = filter_values[field]
-            label = field_data['label']
-            value = field_data['value']
-            body = f'{body}{label}: {value}\n'
-
-        return body
+    def get_message_body(self, count):
+        template = loader.get_template('outputs/export_message_body.html')
+        fv = filtered_values(self.filter, self.params)
+        return template.render({'count': count, 'filtered_values': fv})
 
 
 class ExporterMixin(object):
@@ -312,7 +305,7 @@ class ExporterMixin(object):
 
         return response
 
-    def get_message_body(self):
+    def get_message_body(self, count):
         raise NotImplementedError()
 
     def save_export(self):
