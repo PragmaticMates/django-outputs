@@ -16,5 +16,4 @@ def notify_about_executed_export(export):
 
 @apm_custom_context('tasks')
 def schedule_scheduler(scheduler):
-    print('schedule scheduler')
     scheduler.schedule()
