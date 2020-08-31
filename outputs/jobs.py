@@ -20,10 +20,13 @@ def execute_export(exporter_class, exporter_params, language):
     export.send_mail(language, exporter_params.get('filename', None))
 
 
+#  todo review
 @job('exports')
-def mail_export(export_id, language, filename=None):
+# def mail_export(export_id, language, filename=None):
+def mail_export(export, language, filename=None):
     from outputs.models import Export
-    export = Export.objects.get(id=export_id)
+    # export = Export.objects.get(id=export_id)
+    export.refresh_from_db()
 
     export.status = Export.STATUS_PROCESSING
     export.save(update_fields=['status'])
@@ -71,7 +74,7 @@ def mail_export(export_id, language, filename=None):
     message = get_message(
         exporter,
         count=num_items,
-        recipient_list=export.recipients.values_list('email', flat=True),
+        recipient_list=export.recipients_emails,
         # recipient_list=export.emails,
         subject='{}: {}'.format(_('Export'), verbose_name),
         filename=filename
