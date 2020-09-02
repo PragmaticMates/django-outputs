@@ -1,10 +1,10 @@
+from django.contrib.auth import get_user_model
 from django.core.mail import EmailMultiAlternatives
 from django.db.models import Q
 from django.utils import translation
 from django.utils.translation import ugettext_lazy as _
 from django_rq import job
-
-from django.contrib.auth import get_user_model
+from pragmatic.utils import class_for_name
 from whistle.helpers import notify
 
 
@@ -22,11 +22,11 @@ def execute_export(exporter_class, exporter_params, language):
 
 #  todo review
 @job('exports')
-# def mail_export(export_id, language, filename=None):
-def mail_export(export, language, filename=None):
+def mail_export(export_id, export_class_name, language, filename=None):
     from outputs.models import Export
-    # export = Export.objects.get(id=export_id)
-    export.refresh_from_db()
+    module_name, class_name = export_class_name.rsplit('.', 1)
+    export_class = class_for_name(module_name, class_name)
+    export = export_class.objects.get(id=export_id)
 
     export.status = Export.STATUS_PROCESSING
     export.save(update_fields=['status'])
