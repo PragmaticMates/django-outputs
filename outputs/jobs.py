@@ -92,6 +92,9 @@ def get_message(exporter, count, recipient_list, subject, filename=None):
     # message body
     body = exporter.get_message_body(count)
 
+    # message subject
+    subject = subject if not exporter.get_message_subject() else exporter.get_message_subject()
+
     # prepare message
     message = EmailMultiAlternatives(subject=subject, to=recipient_list)
     message.attach_alternative(body, "text/html")

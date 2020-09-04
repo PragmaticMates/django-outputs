@@ -308,6 +308,9 @@ class ExporterMixin(object):
     def get_message_body(self, count):
         raise NotImplementedError()
 
+    def get_message_subject(self):
+        return None
+
     def save_export(self):
         items = self.get_queryset().all()
 
