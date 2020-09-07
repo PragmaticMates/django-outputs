@@ -118,6 +118,10 @@ class AbstractExport(models.Model):
     def params(self):
         return QueryDict(self.query_string)
 
+    @property
+    def recipients_emails(self):
+        return list(self.recipients.values_list('email', flat=True))
+
     def get_params_display(self):
         result = ''
 
@@ -215,7 +219,8 @@ class Export(AbstractExport):
         return app_label
 
     def send_mail(self, language, filename=None):
-        jobs.mail_export.delay(self.id, language, filename)
+        export_class_name = f'{self.__class__.__module__}.{self.__class__.__name__}'
+        jobs.mail_export.delay(self.pk, export_class_name, language, filename)
 
     @property
     def object_list(self):
@@ -326,10 +331,11 @@ class Scheduler(AbstractExport):
             scheduler = django_rq.get_scheduler('cron')
 
             # schedule export as cron job
+            scheduler_class_name = f'{self.__class__.__module__}.{self.__class__.__name__}'
             job = scheduler.cron(
                 self.cron,
                 func=schedule_export,
-                args=(self.id,),
+                args=(self.pk, scheduler_class_name),
                 timeout=settings.RQ_QUEUES['cron']['DEFAULT_TIMEOUT']
             )
 
