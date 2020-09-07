@@ -2,9 +2,9 @@ from django.contrib.auth import get_user_model
 from django.core.mail import EmailMultiAlternatives
 from django.db.models import Q
 from django.utils import translation
+from django.utils.module_loading import import_string
 from django.utils.translation import ugettext_lazy as _
 from django_rq import job
-from pragmatic.utils import class_for_name
 from whistle.helpers import notify
 
 
@@ -20,12 +20,11 @@ def execute_export(exporter_class, exporter_params, language):
     export.send_mail(language, exporter_params.get('filename', None))
 
 
-#  todo review
+#  TODO: review
 @job('exports')
 def mail_export(export_id, export_class_name, language, filename=None):
     from outputs.models import Export
-    module_name, class_name = export_class_name.rsplit('.', 1)
-    export_class = class_for_name(module_name, class_name)
+    export_class = import_string(export_class_name)
     export = export_class.objects.get(id=export_id)
 
     export.status = Export.STATUS_PROCESSING
@@ -93,7 +92,7 @@ def get_message(exporter, count, recipient_list, subject, filename=None):
     body = exporter.get_message_body(count)
 
     # message subject
-    subject = subject if not exporter.get_message_subject() else exporter.get_message_subject()
+    subject = exporter.get_message_subject() or subject
 
     # prepare message
     message = EmailMultiAlternatives(subject=subject, to=recipient_list)

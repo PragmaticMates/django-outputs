@@ -1,15 +1,13 @@
+from django.utils.module_loading import import_string
 from django.utils.timezone import now
-from pragmatic.utils import class_for_name
 
 from outputs import jobs
 
 
-#  todo review
+# TODO: review
 def schedule_export(scheduler_id, scheduler_class_name):
-
-    # # get scheduler by its identifier
-    module_name, class_name = scheduler_class_name.rsplit('.', 1)
-    scheduler_class = class_for_name(module_name, class_name)
+    # get scheduler by its identifier
+    scheduler_class = import_string(scheduler_class_name)
     scheduler = scheduler_class.objects.get(pk=scheduler_id)
 
     # delay export job in background
