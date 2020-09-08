@@ -104,12 +104,12 @@ class ExportFieldsPermissionsMixin(object):
         self.table_width = max_field_groups+1
 
     def load_all_exportable_fields(self):
-        exporters = []
+        exporters = set()
 
-        from outputs.mixins import FilterExporterMixin
-        for cls in FilterExporterMixin.__subclasses__():
-            if hasattr(cls, 'selectable_fields'):
-                exporters.append(cls)
+        from outputs.mixins import ExcelExporterMixin
+        for cls in ExcelExporterMixin.__subclasses__():
+            if hasattr(cls, 'selectable_fields') and not cls.exclude_in_permission_widget:
+                exporters.add(cls)
 
         all_exportable_fields = {}
         max_field_groups = 0
@@ -125,12 +125,12 @@ class ExportFieldsPermissionsMixin(object):
                 selectable_fields = OrderedDict(selectable_fields)
 
             try:
-                for set in exporter.selectable_iterative_sets().values():
-                    selectable_fields.update(set)
+                for iterative_set in exporter.selectable_iterative_sets().values():
+                    selectable_fields.update(iterative_set)
             except AttributeError:
                 pass
 
-            app_name, model_name = exporter.queryset.model._meta.label.split('.')
+            app_name, model_name = exporter.get_model()._meta.label.split('.')
             export_format = exporter.export_format
             export_format = export_format.capitalize()
 

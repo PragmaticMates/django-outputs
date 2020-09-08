@@ -223,6 +223,7 @@ class SelectExportMixin(ConfirmExportMixin, ExportFieldsPermissionsMixin):
 class FilterExporterMixin(object):
     filter_class = None
     queryset = None
+    model = None
 
     def __init__(self, params, **kwargs):
         self.params = params
@@ -231,6 +232,10 @@ class FilterExporterMixin(object):
 
         # create filter
         self.filter = self.get_filter()
+
+    @classmethod
+    def get_model(cls):
+        return cls.queryset.model if cls.queryset else cls.model
 
     def get_filter(self):
         return self.filter_class(self.params, queryset=self.get_whole_queryset(self.params))
@@ -347,6 +352,7 @@ class ExcelExporterMixin(ExporterMixin):
         'bold_money': {'num_format': '### ### ###.00 €', 'bold': True},
     }
     proxy_class = None
+    exclude_in_permission_widget = False
 
     @staticmethod
     def selectable_fields():
