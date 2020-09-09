@@ -17,7 +17,7 @@ setup(
         'outputs.migrations'
     ],
     include_package_data=True,
-    install_requires=('django', 'django_rq', 'django-crispy-forms', 'whistle', 'django-pragmatic'),
+    install_requires=('django', 'django-rq', 'django-crispy-forms', 'django-whistle', 'django-pragmatic'),
     classifiers=[
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
