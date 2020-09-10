@@ -549,7 +549,7 @@ class ExcelExporterMixin(ExporterMixin):
         objects = self.get_queryset()
 
         if not objects.exists():
-            raise ValueError()
+            return
 
         # use only selected fields
         fields, iterative_sets_fields = self.get_selected_fields(objects)
