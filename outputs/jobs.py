@@ -98,11 +98,12 @@ def get_message(exporter, count, recipient_list, subject, filename=None):
     message = EmailMultiAlternatives(subject=subject, to=recipient_list)
     message.attach_alternative(body, "text/html")
 
-    # get the stream and set the correct mimetype
-    message.attach(
-        filename or exporter.get_filename(),
-        exporter.get_output(),
-        exporter.content_type
-    )
+    if count > 0:
+        # get the stream and set the correct mimetype
+        message.attach(
+            filename or exporter.get_filename(),
+            exporter.get_output(),
+            exporter.content_type
+        )
 
     return message

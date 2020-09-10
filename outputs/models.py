@@ -338,7 +338,7 @@ class Scheduler(AbstractExport):
                 args=(self.pk, scheduler_class_name),
                 timeout=settings.RQ_QUEUES['cron']['DEFAULT_TIMEOUT']
             )
-
+            
             self.job_id = job.id
         else:
             # inactive scheduler doesn't have job ID
