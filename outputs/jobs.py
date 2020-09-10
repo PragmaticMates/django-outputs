@@ -70,21 +70,33 @@ def mail_export(export_id, export_class_name, language, filename=None):
 
         raise
 
-    message = get_message(
-        exporter,
-        count=num_items,
-        recipient_list=export.recipients_emails,
-        # recipient_list=export.emails,
-        subject='{}: {}'.format(_('Export'), verbose_name),
-        filename=filename
-    )
+    if export.send_separately:
+        for recipient in export.recipients_emails:
+            message = get_message(
+                exporter,
+                count=num_items,
+                recipient_list=[recipient],
+                subject='{}: {}'.format(_('Export'), verbose_name),
+                filename=filename
+            )
+
+            # send
+            message.send(fail_silently=False)
+
+    else:
+        message = get_message(
+            exporter,
+            count=num_items,
+            recipient_list=export.recipients_emails,
+            subject='{}: {}'.format(_('Export'), verbose_name),
+            filename=filename
+        )
+        # send
+        message.send(fail_silently=False)
 
     # update status of export
     export.status = Export.STATUS_FINISHED
     export.save(update_fields=['status'])
-
-    # send
-    return message.send(fail_silently=False)
 
 
 def get_message(exporter, count, recipient_list, subject, filename=None):
