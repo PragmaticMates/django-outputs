@@ -235,7 +235,7 @@ class FilterExporterMixin(object):
 
     @classmethod
     def get_model(cls):
-        return cls.queryset.model if cls.queryset else cls.model
+        return cls.queryset.model if cls.queryset is not None else cls.model
 
     def get_filter(self):
         return self.filter_class(self.params, queryset=self.get_whole_queryset(self.params))
