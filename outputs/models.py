@@ -59,6 +59,7 @@ class AbstractExport(models.Model):
     recipients = models.ManyToManyField(get_user_model(), verbose_name=_('recipients'), related_name="%(class)s_where_recipient", blank=True)
     created = models.DateTimeField(_('created'), auto_now_add=True)
     modified = models.DateTimeField(_('modified'), auto_now=True)
+    send_separately = models.BooleanField(_('send separately'), default=False)
 
     class Meta:
         abstract = True
@@ -111,7 +112,8 @@ class AbstractExport(models.Model):
             'params': self.params,
             'user': self.creator,
             'recipients': self.recipients.all(),
-            'selected_fields': self.fields
+            'selected_fields': self.fields,
+            'send_separately': self.send_separately
         }
 
     @property

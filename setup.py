@@ -28,6 +28,6 @@ setup(
         'License :: OSI Approved :: BSD License',
         'Development Status :: 3 - Alpha'
     ],
-    license='BSD License',
+    license='GPLv3',
     keywords="django outputs export scheduler rq redis",
 )

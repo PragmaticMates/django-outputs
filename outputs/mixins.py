@@ -267,9 +267,11 @@ class ExporterMixin(object):
     filename = None
     export_format = None
     export_context = None
+    send_separately = False
 
     def __init__(self, user, recipients, **kwargs):
         self.filename = kwargs.pop('filename', self.filename)
+        self.send_separately = kwargs.pop('send_separately', self.send_separately)
         self.user = user
         self.recipients = recipients
 

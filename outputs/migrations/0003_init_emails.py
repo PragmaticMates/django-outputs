@@ -6,7 +6,7 @@ from outputs.models import Export
 
 def set_metadata(*args, **kwargs):
     print('Init emails in Exports ...')
-    exports = Export.objects.all()
+    exports = Export.objects.all().only('emails')
 
     for export in exports:
         emails = list(export.recipients.values_list('email', flat=True))
