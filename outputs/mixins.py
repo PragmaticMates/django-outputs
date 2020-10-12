@@ -3,7 +3,6 @@ import io
 import json
 import operator
 
-import xlsxwriter
 from django.contrib import messages
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count, QuerySet
@@ -12,7 +11,6 @@ from django.template import loader
 from django.utils import translation
 from django.utils.timezone import localtime
 from django.utils.translation import ugettext_lazy as _
-from xlsxwriter.utility import datetime_to_excel_datetime
 
 from pragmatic.templatetags.pragmatic_tags import filtered_values
 from outputs import jobs
@@ -365,6 +363,7 @@ class ExcelExporterMixin(ExporterMixin):
         super().__init__(**kwargs)
 
         # create a workbook in memory
+        import xlsxwriter
         self.workbook = xlsxwriter.Workbook(self.output)
         self.workbook.remove_timezone = True
 
@@ -378,6 +377,7 @@ class ExcelExporterMixin(ExporterMixin):
 
     @staticmethod
     def to_excel_datetime(to_convert):
+        from xlsxwriter.utility import datetime_to_excel_datetime
         return datetime_to_excel_datetime(to_convert, False, False)
 
     def export(self):
