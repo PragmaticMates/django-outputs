@@ -86,6 +86,7 @@ class SchedulerFilter(django_filters.FilterSet):
         queryset=ContentType.objects.filter(pk__in=Scheduler.objects.order_by('content_type').values_list('content_type', flat=True).distinct()),
         widget=Select2Widget
     )
+    is_active = django_filters.ChoiceFilter(label=_('Active'), empty_label=_("Doesn't matter"), choices=[('True', _("Yes")), ('False', _("No"))])
 
     class Meta:
         model = Scheduler
