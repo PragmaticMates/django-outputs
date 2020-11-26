@@ -213,7 +213,13 @@ class Export(AbstractExport):
 
     def get_app_label(self):
         if self.context in [self.CONTEXT_LIST, self.CONTEXT_DETAIL]:
-            app_label = self.content_type.app_label if self.content_type.app_label != 'invoicing' else 'billing'
+            app_label = self.content_type.app_label
+
+            if app_label == 'invoicing':  # TODO: refactor
+                app_label = 'billing'
+            elif app_label == 'exports':
+                app_label = 'outputs'
+
         else:
             module = exporters_module_mapping[self.model_class._meta.label][self.context]
             app_label = module.split('.')[-2]
