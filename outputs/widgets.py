@@ -156,7 +156,7 @@ class ExportFieldsPermissionsMixin(object):
         Decompress value (expected to be string of json dumped dictionary) to list of initial values for template table
         """
         # is single value passed, convert to tuple, else raise error if not anticipated iterable
-        if isinstance(value, str):
+        if isinstance(value, str) or isinstance(value, dict):
             value = (value,)
         elif not isinstance(value, (list, tuple, QuerySet)):
             raise TypeError()
@@ -165,7 +165,7 @@ class ExportFieldsPermissionsMixin(object):
         permission_keys = set()
 
         for val in value:
-            permissions = json.loads(val)
+            permissions = json.loads(val) if isinstance(val, str) else val
             # when val is retrieved from queryset, load needs to be done twice for some reason unknown to me
             if isinstance(permissions, str):
                 permissions = json.loads(permissions)
