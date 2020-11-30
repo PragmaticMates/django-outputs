@@ -166,10 +166,7 @@ class ExportFieldsPermissionsMixin(object):
 
         for val in value:
             permissions = json.loads(val) if isinstance(val, str) else val
-            # when val is retrieved from queryset, load needs to be done twice for some reason unknown to me
-            if isinstance(permissions, str):
-                permissions = json.loads(permissions)
-
+            
             # due to previous bug this case is handled instead of creating migration
             if permissions is None:
                 permissions={}
@@ -206,7 +203,7 @@ class ExportFieldsPermissionsMixin(object):
 
         return permission_keys
 
-    def format_output(self, value, compress=True):
+    def format_output(self, value, compress=False:
         """
         Converts value (list) to dictionary and optionally compress to json string
         """
