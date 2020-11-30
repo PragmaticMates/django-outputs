@@ -30,8 +30,6 @@ class ExportFieldsPermissionsMixin(object):
 
         loaded_permissions = []
         for permission in permissions:
-            permission = json.loads(permission)
-
             if isinstance(permission, str):
                 permission = json.loads(permission)
 
