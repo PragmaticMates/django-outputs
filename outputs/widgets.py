@@ -9,7 +9,12 @@ from django.forms import CheckboxSelectMultiple, MultipleChoiceField
 from django.forms.widgets import ChoiceWidget
 from django.template.loader import get_template
 from django.utils.safestring import mark_safe
-from jsonfield import JSONField
+try:
+    # Django 3.1
+    from django.db.models import JSONField
+except ImportError:
+    # older Django
+    from django.contrib.postgres.fields import JSONField
 
 
 class ExportFieldsPermissionsMixin(object):
