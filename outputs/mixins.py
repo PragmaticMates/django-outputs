@@ -319,7 +319,6 @@ class ExporterMixin(object):
 
     def save_export(self):
         items = self.get_queryset().all()
-
         model = self.queryset.model
         params = getattr(self, 'params', {})
 
@@ -334,7 +333,11 @@ class ExporterMixin(object):
             total=items.count()
         )
         export.recipients.add(*list(self.recipients))
-        export.items.add(*list(items))
+
+        try:
+            export.items.add(*list(items))
+        except AttributeError:
+            pass
 
         return export
 
@@ -412,7 +415,10 @@ class ExcelExporterMixin(ExporterMixin):
 
         # get object attribute
         try:
-            value = operator.attrgetter(attr)(obj)
+            if isinstance(obj, dict):
+                value = obj.get(attr)
+            else:
+                value = operator.attrgetter(attr)(obj)
         except AttributeError as e:
             if 'NoneType' in str(e):
                 value = None
