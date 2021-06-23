@@ -334,8 +334,10 @@ class ExporterMixin(object):
         )
         export.recipients.add(*list(self.recipients))
 
-        if self.export_context == Export.CONTEXT_LIST:
+        try:
             export.items.add(*list(items))
+        except AttributeError:
+            pass
 
         return export
 
