@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name='django-outputs',
-    version='1.0.4',
+    version='1.0.5',
     description='Exports and schedulers for Django',
     long_description=open('README.md').read(),
     author='Pragmatic Mates',
