@@ -62,7 +62,7 @@
                                 {% with export.get_fields_labels as field_labels %}
                                     {% if field_labels %}
                                         <div class="text-primary" data-toggle="tooltip" data-placement="left" data-html="true" title="{{ field_labels|join:'<br>' }}"
-                                            data-template='<div class="tooltip" role="tooltip" data-color="primary" data-content-size="long"><div class="arrow"></div><div class="tooltip-inner"></div></div>'>
+                                            data-template='<div class="tooltip tooltip-primary tooltip-long"><div class="arrow"></div><div class="tooltip-inner"></div></div>'>
                                             {% blocktrans count total_fields=export.fields|length %}{{ total_fields }} field{% plural %}{{ total_fields }} fields{% endblocktrans %}
                                         </div>
                                     {% endif %}
