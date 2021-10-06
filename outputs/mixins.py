@@ -407,7 +407,14 @@ class ExcelExporterMixin(ExporterMixin):
         return field[4]
 
     def write_row(self, worksheet, row, col, obj, field):
+        attr_index = None
         attr = self.get_attribute(field)
+
+        if '[' in attr and ']' in attr:
+            start = attr.rindex('[')
+            end = attr.rindex(']')
+            attr_index = attr[start+1:end]
+            attr = attr[0:start]
 
         # get cell format
         cell_format_identifier = self.get_cell_format(field)
@@ -424,6 +431,9 @@ class ExcelExporterMixin(ExporterMixin):
                 value = None
             else:
                 raise e
+
+        if attr_index and value is not None:
+            value = value.get(attr_index, '')
 
         # try to use custom lambda handler
         try:
