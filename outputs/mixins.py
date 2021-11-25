@@ -363,7 +363,7 @@ class ExcelExporterMixin(ExporterMixin):
         raise NotImplementedError()
 
     def __init__(self, **kwargs):
-        self.selected_fields = kwargs.get('selected_fields')
+        self.selected_fields = kwargs.get('selected_fields', None)
         super().__init__(**kwargs)
 
         # create a workbook in memory
@@ -531,7 +531,7 @@ class ExcelExporterMixin(ExporterMixin):
         for field_set in self.selectable_fields().values():
             for field in field_set:
                 attr = self.get_attribute(field)
-                if attr in self.selected_fields:
+                if self.selected_fields is None or attr in self.selected_fields:
                     fields.append(field)
 
         iterative_sets_fields = []
