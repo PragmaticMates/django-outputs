@@ -14,7 +14,7 @@ from django.utils.translation import ugettext_lazy as _
 
 from pragmatic.templatetags.pragmatic_tags import filtered_values
 from outputs import jobs
-from outputs.forms import ChooseExportFieldsForm
+from outputs.forms import ChooseExportFieldsForm, ConfirmExportForm
 from outputs.models import Export
 
 
@@ -88,7 +88,39 @@ class ExportFieldsPermissionsMixin(object):
 class ConfirmExportMixin(object):
     template_name = 'outputs/export_confirmation.html'
     back_url = None
-    selected_fields = []
+    form_class = ConfirmExportForm
+
+    def get_success_url(self):
+        return self.get_back_url()
+
+    def get_initial(self):
+        """
+        Returns the initial data to use for forms on this view.
+        """
+        initial = super().get_initial()
+        initial['recipients'] = self.request.user
+        initial['filename'] = self.exporter_class.filename
+
+        return initial
+
+    @property
+    def exporter_params(self):
+        return {
+            'user': self.request.user,
+            'recipients': getattr(self, 'recipients', []),
+            'params': self.get_params(),
+            'filename': getattr(self, 'filename', None)
+        }
+
+    def get_params(self):
+        params = self.request.GET.copy()
+
+        try:
+            params.pop('back_url')
+        except KeyError:
+            pass
+
+        return params
 
     def get_back_url(self):
         url = self.request.GET.get('back_url', self.back_url)
@@ -102,8 +134,11 @@ class ConfirmExportMixin(object):
         context_data['objects_count'] = self.get_objects_count()
         return context_data
 
+    def get_exporter(self):
+        return self.exporter_class(**self.exporter_params)
+
     def export(self):
-        raise NotImplementedError()
+        jobs.execute_export.delay(self.exporter_class, self.exporter_params, language=translation.get_language())
 
     def get_objects_count(self):
         return self.get_exporter().get_queryset().count()
@@ -112,34 +147,19 @@ class ConfirmExportMixin(object):
         kwargs = super().get_form_kwargs()
         return kwargs
 
+    def form_valid(self, form):
+        self.recipients = form.cleaned_data.pop('recipients')
+        self.filename = form.cleaned_data.pop('filename')
+        self.export()
+        messages.info(self.request, _('Your request is being processed. It can take few minutes. The result will be sent to your email.'))
+        return super().form_valid(form)
+
 
 class SelectExportMixin(ConfirmExportMixin, ExportFieldsPermissionsMixin):
     template_name = 'outputs/export_selection.html'
     form_class = ChooseExportFieldsForm
     limit = None
-
-    def get_initial(self):
-        """
-        Returns the initial data to use for forms on this view.
-        """
-        initial = super().get_initial()
-        initial['recipients'] = self.request.user
-        initial['filename'] = self.exporter_class.filename
-
-        return initial
-
-    def get_success_url(self):
-        return self.get_back_url()
-
-    def get_params(self):
-        params = self.request.GET.copy()
-
-        try:
-            params.pop('back_url')
-        except KeyError:
-            pass
-
-        return params
+    selected_fields = []
 
     @property
     def exporter_params(self):
@@ -151,22 +171,10 @@ class SelectExportMixin(ConfirmExportMixin, ExportFieldsPermissionsMixin):
             'filename': getattr(self, 'filename', None)
         }
 
-    def get_exporter(self):
-        return self.exporter_class(**self.exporter_params)
-
-    def export(self):
-        jobs.execute_export.delay(self.exporter_class, self.exporter_params, language=translation.get_language())
-
     def form_valid(self, form):
-        self.recipients = form.cleaned_data.pop('recipients')
-        self.filename = form.cleaned_data.pop('filename')
-
         self.selected_fields = []
         for label, fields in form.cleaned_data.items():
             self.selected_fields += fields
-
-        self.export()
-        messages.info(self.request, _('Your request is being processed. It can take few minutes. The result will be sent to your email.'))
         return super().form_valid(form)
 
     def get_permitted_fields(self):
@@ -203,9 +211,9 @@ class SelectExportMixin(ConfirmExportMixin, ExportFieldsPermissionsMixin):
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
 
-        try:
+        if hasattr(self.exporter_class, 'selectable_fields'):
             selectable_fields = self.exporter_class.selectable_fields()
-        except AttributeError:
+        else:
             selectable_fields = None
 
         try:
@@ -322,15 +330,25 @@ class ExporterMixin(object):
         model = self.queryset.model
         params = getattr(self, 'params', {})
 
+        fields = getattr(self, 'selected_fields', None)
+
+        if fields is None:  # exporting all fields by default
+            if hasattr(self, 'selectable_fields'):
+                fields = []
+                for label, fieldset in self.selectable_fields().items():
+                    for field_definition in fieldset:
+                        fields.append(field_definition[0])  # TODO: use map()
+
         # track export
         export = Export.objects.create(
             content_type=ContentType.objects.get_for_model(model, for_concrete_model=False),
             format=self.export_format,
             context=self.export_context,
-            fields=getattr(self, 'selected_fields', []),
+            fields=fields,
             creator=self.user,
             query_string=params.urlencode(),
-            total=items.count()
+            total=items.count(),
+            emails=[recipient.email for recipient in self.recipients]
         )
         export.recipients.add(*list(self.recipients))
 

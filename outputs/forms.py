@@ -11,7 +11,7 @@ from outputs.widgets import CheckboxSelectMultipleWithDisabled, Legend
 from pragmatic.forms import SingleSubmitFormHelper
 
 
-class ChooseExportFieldsForm(forms.Form):
+class ConfirmExportForm(forms.Form):
     recipients = forms.ModelMultipleChoiceField(
         label=_('Recipients'),
         queryset=get_user_model().objects.all(),
@@ -19,6 +19,18 @@ class ChooseExportFieldsForm(forms.Form):
         required=True,
     )
     filename = forms.CharField(label=_('File name'))
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = SingleSubmitFormHelper()
+        self.helper.form_tag = False
+        self.helper.layout = Layout(Row(
+            Div('recipients', css_class='col-lg-3'),
+            Div('filename', css_class='col-lg-3'),
+        ))
+
+
+class ChooseExportFieldsForm(ConfirmExportForm):
     select_all = BooleanField(label=_('Select all'), widget=CheckboxInput(attrs={'class': 'all'}), required=False)
 
     def __init__(self, *args, **kwargs):
@@ -72,7 +84,7 @@ class ChooseExportFieldsForm(forms.Form):
         dynamic_fields_layout = []
         for field_key, field in self.fields.items():
             # if not static field
-            if field_key.startswith('field') and not field_key in self.static_fields:
+            if field_key.startswith('field') and field_key not in self.static_fields:
                 group_key = field_key.strip('field_')
 
                 dynamic_fields_layout.append(
