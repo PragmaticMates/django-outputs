@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 from setuptools import setup
 
+from outputs import VERSION
 
 setup(
     name='django-outputs',
-    version='1.0.5',
+    version=VERSION,
     description='Exports and schedulers for Django',
     long_description=open('README.md').read(),
     author='Pragmatic Mates',
