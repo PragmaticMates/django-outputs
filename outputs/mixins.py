@@ -143,10 +143,6 @@ class ConfirmExportMixin(object):
     def get_objects_count(self):
         return self.get_exporter().get_queryset().count()
 
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        return kwargs
-
     def form_valid(self, form):
         self.recipients = form.cleaned_data.pop('recipients')
         self.filename = form.cleaned_data.pop('filename')
