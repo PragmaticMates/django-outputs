@@ -328,12 +328,16 @@ class ExporterMixin(object):
 
         fields = getattr(self, 'selected_fields', None)
 
-        if fields is None:  # exporting all fields by default
+        if fields is None:  # exporting all fields by default (without fields selection)
             if hasattr(self, 'selectable_fields'):
                 fields = []
                 for label, fieldset in self.selectable_fields().items():
                     for field_definition in fieldset:
                         fields.append(field_definition[0])  # TODO: use map()
+            else:
+                # exporter doesn't have selectable fields (for instance export to PDF)
+                # save None instead of empty list
+                pass
 
         # track export
         export = Export.objects.create(

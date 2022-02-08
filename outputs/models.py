@@ -52,7 +52,7 @@ class AbstractExport(models.Model):
     content_type = models.ForeignKey(ContentType, verbose_name=_('content type'), on_delete=models.CASCADE)
     format = models.CharField(_('format'), choices=FORMATS, max_length=7)
     context = models.CharField(_('context'), choices=CONTEXTS, max_length=10)
-    fields = ArrayField(verbose_name=_('fields'), base_field=models.CharField(max_length=40), blank=True, default=list)
+    fields = ArrayField(verbose_name=_('fields'), base_field=models.CharField(max_length=40), blank=True, null=True, default=None)
     query_string = models.TextField(_('query string'), blank=True, default='')
     creator = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name=_('creator'), on_delete=models.PROTECT, related_name="%(class)s_where_creator",
                                 blank=True, null=True, default=None)
