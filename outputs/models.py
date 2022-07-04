@@ -193,7 +193,7 @@ class Export(AbstractExport):
         verbose_name = _('export')
         verbose_name_plural = _('exports')
         ordering = ('created',)
-        default_permissions = settings.DEFAULT_PERMISSIONS
+        default_permissions = getattr(settings, 'DEFAULT_PERMISSIONS', ('add', 'change', 'delete', 'view'))
 
     def __str__(self):
         model = self.content_type.model_class()
@@ -280,7 +280,7 @@ class Scheduler(AbstractExport):
         verbose_name = _('scheduler')
         verbose_name_plural = _('schedulers')
         ordering = ('created',)
-        default_permissions = settings.DEFAULT_PERMISSIONS
+        default_permissions = getattr(settings, 'DEFAULT_PERMISSIONS', ('add', 'change', 'delete', 'view'))
 
     def __str__(self):
         return '{} #{} ({} - {})'.format(_('Scheduler'), self.pk, self.content_type.model_class()._meta.verbose_name_plural, self.get_routine_display())
