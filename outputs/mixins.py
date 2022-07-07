@@ -369,6 +369,7 @@ class ExcelExporterMixin(ExporterMixin):
         'header': {'bold': True, 'font_color': '#ffffff', 'bg_color': '#E2105D'},
         'date': {'num_format': 'dd.mm.yyyy'},
         'datetime': {'num_format': 'dd.mm.yyyy hh:mm'},
+        'time': {'num_format': 'hh:mm'},
         'integer': {'num_format': '#'},
         'money': {'num_format': '### ### ###.00 €'},
         'bold_money': {'num_format': '### ### ###.00 €', 'bold': True},
