@@ -141,6 +141,9 @@ class AbstractExport(models.Model):
         return result
 
     def get_fields_labels(self):
+        if self.fields is None:  # TODO: double check functionality
+            return []
+
         field_labels = []
         exporter = self.exporter
 
