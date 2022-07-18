@@ -169,8 +169,9 @@ class SelectExportMixin(ConfirmExportMixin, ExportFieldsPermissionsMixin):
 
     def form_valid(self, form):
         self.selected_fields = []
-        for label, fields in form.cleaned_data.items():
-            self.selected_fields += fields
+        for form_key, fields in form.cleaned_data.items():
+            if form_key not in ['recipients', 'filename']:  # TODO: refactor using selectable_fields
+                self.selected_fields += fields
         return super().form_valid(form)
 
     def get_permitted_fields(self):
