@@ -11,7 +11,7 @@ from django.db import models
 from django.http import QueryDict
 from django.template import Context, Template
 from django.template.defaultfilters import title
-from django.urls import reverse
+from django.urls import reverse, NoReverseMatch, resolve, Resolver404
 from django.utils.module_loading import import_string
 from django.utils.translation import ugettext_lazy as _
 from gm2m import GM2MField
@@ -204,15 +204,35 @@ class Export(AbstractExport):
         return '{} #{} ({})'.format(_('Export'), self.pk, name)
 
     def _get_base_url(self):
-        app_label = self.get_app_label()
-        url = reverse(f'{app_label}:{self.content_type.model}_list')
-        return url
+        try:
+            app_label = self.get_app_label()
+            url = reverse(f'{app_label}:{self.content_type.model}_list')
+            return url
+        except NoReverseMatch:
+            model = self.content_type.model_class()
+            instance = model(pk=1)
+            detail_url = instance.get_absolute_url()
+
+            from urllib.parse import urlsplit
+            parsed = urlsplit(detail_url)
+            try:
+                match = resolve(parsed.path)
+                to_be_reversed = "%s:%s" % (match.namespace, match.url_name) if match.namespace else match.url_name
+                list_url = to_be_reversed.replace('detail', 'list')
+                return reverse(list_url)
+            except (Resolver404, NoReverseMatch):
+                pass
+
+        return None
+        # return NotImplementedError()
 
     def get_items_url(self):
-        return f'{self._get_base_url()}?export={self.pk}'
+        base_url = self._get_base_url()
+        return f'{self._get_base_url()}?export={self.pk}' if base_url is not None else None
 
     def get_absolute_url(self):
-        return f'{self._get_base_url()}?{self.query_string}'
+        base_url = self._get_base_url()
+        return f'{self._get_base_url()}?{self.query_string}' if base_url is not None else None
 
     def get_app_label(self):
         if self.context in [self.CONTEXT_LIST, self.CONTEXT_DETAIL]:

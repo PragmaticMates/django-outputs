@@ -16,6 +16,9 @@ class ExportAdmin(admin.ModelAdmin):
         for obj in queryset.all():
             obj.send_mail(language=request.LANGUAGE_CODE)
 
+    def view_on_site(self, obj):
+        return obj.get_absolute_url()
+
 
 @admin.register(Scheduler)
 class SchedulerAdmin(admin.ModelAdmin):
