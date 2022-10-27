@@ -374,6 +374,8 @@ class ExcelExporterMixin(ExporterMixin):
         'integer': {'num_format': '#'},
         'money': {'num_format': '### ### ###0.00 €'},
         'bold_money': {'num_format': '### ### ###0.00 €', 'bold': True},
+        'money_amount': {'num_format': '### ### ###0.00'},
+        'bold_money_amount': {'num_format': '### ### ###0.00', 'bold': True},
     }
     proxy_class = None
     exclude_in_permission_widget = False
