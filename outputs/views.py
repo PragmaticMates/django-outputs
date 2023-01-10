@@ -2,7 +2,12 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404
 from django.urls import reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DetailView, DeleteView
-from django.utils.translation import ugettext_lazy as _
+try:
+    # Django >= 3
+    from django.utils.translation import gettext_lazy as _
+except ImportError:
+    # older Django
+    from django.utils.translation import ugettext_lazy as _
 from pragmatic.mixins import LoginPermissionRequiredMixin, DisplayListViewMixin, SortingListViewMixin, DeleteObjectMixin
 from outputs.filters import ExportFilter, SchedulerFilter
 from outputs.forms import SchedulerForm
