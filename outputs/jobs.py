@@ -4,11 +4,11 @@ from django.db.models import Q
 from django.utils import translation
 from django.utils.module_loading import import_string
 try:
-    # Django >= 3
-    from django.utils.translation import gettext_lazy as _
-except ImportError:
     # older Django
     from django.utils.translation import ugettext_lazy as _
+except ImportError:
+    # Django >= 3
+    from django.utils.translation import gettext_lazy as _
 from django_rq import job
 from whistle.helpers import notify
 

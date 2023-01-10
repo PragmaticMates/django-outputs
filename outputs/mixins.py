@@ -11,11 +11,11 @@ from django.template import loader
 from django.utils import translation
 from django.utils.timezone import localtime
 try:
-    # Django >= 3
-    from django.utils.translation import gettext_lazy as _
-except ImportError:
     # older Django
     from django.utils.translation import ugettext_lazy as _
+except ImportError:
+    # Django >= 3
+    from django.utils.translation import gettext_lazy as _
 
 from pragmatic.templatetags.pragmatic_tags import filtered_values
 from outputs import jobs
