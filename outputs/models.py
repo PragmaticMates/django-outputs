@@ -52,6 +52,7 @@ class AbstractExport(models.Model):
     content_type = models.ForeignKey(ContentType, verbose_name=_('content type'), on_delete=models.CASCADE)
     format = models.CharField(_('format'), choices=FORMATS, max_length=7)
     context = models.CharField(_('context'), choices=CONTEXTS, max_length=10)
+    exporter_path = models.CharField(_('exporter path'), max_length=100, blank=True, default='')
     fields = ArrayField(verbose_name=_('fields'), base_field=models.CharField(max_length=40), blank=True, null=True, default=None)
     query_string = models.TextField(_('query string'), blank=True, default='')
     creator = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name=_('creator'), on_delete=models.PROTECT, related_name="%(class)s_where_creator",
@@ -69,7 +70,7 @@ class AbstractExport(models.Model):
         return self.content_type.model_class()
 
     @staticmethod
-    def get_exporter_class(model_class, context, format):
+    def get_exporter_path(model_class, context, format):
         exports_module = exporters_module_mapping.get(model_class._meta.label, None)
 
         if isinstance(exports_module, dict):
@@ -86,11 +87,21 @@ class AbstractExport(models.Model):
         context = title(context)
         exporter_class_name = '{}{}{}Exporter'.format(exporter_class_name, format, context)
         exporter_path = f'{exports_module}.{exporter_class_name}'
-        return import_string(exporter_path)
+        return exporter_path
 
     @property
     def exporter_class(self):
-        return AbstractExport.get_exporter_class(self.model_class, self.context, self.format)
+        try:
+            return import_string(self.exporter_path)
+        except ModuleNotFoundError:
+            # TODO: log
+            exporter_path = AbstractExport.get_exporter_path(
+                model_class=self.model_class,
+                context=self.context,
+                format=self.format
+            )
+            print('ERROR: Exporter path %s not found. Using fallback (predicted path) instead: %s' % (self.exporter_path, exporter_path))
+            return import_string(exporter_path)
 
     @property
     def exporter(self):
@@ -127,16 +138,21 @@ class AbstractExport(models.Model):
     def get_params_display(self):
         result = ''
 
-        filter = self.exporter.filter
+        try:
+            filter = self.exporter.filter
+            values = filtered_values(filter, self.params)
 
-        filter_values = filtered_values(filter, self.params)
+            for param, field in values.items():
+                label = field['label']
+                value = field['value']
 
-        for param, field in filter_values.items():
-            label = field['label']
-            value = field['value']
+                value = Template("{{ value }}").render(Context({'value': value}))  # workaround for datetime ranges
+                result = f'{result}{label}: {value}\n'
+        except AttributeError:
+            values = self.params
 
-            value = Template("{{ value }}").render(Context({'value': value}))  # workaround for datetime ranges
-            result = f'{result}{label}: {value}\n'
+            for param, value in values.items():
+                result = f'{result}{param}: {value}\n'
 
         return result
 
