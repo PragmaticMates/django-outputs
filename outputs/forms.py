@@ -195,7 +195,7 @@ class SchedulerForm(forms.ModelForm):
 
             try:
                 # validation of content_type, context and format (check if exporter exists)
-                AbstractExport.get_exporter_class(model_class, context, format)
+                AbstractExport.get_exporter_path(model_class, context, format)
             except ImportError:
                 self.add_error(None, _('Exporter for content type {} with given context and format is not available').format(content_type))
 

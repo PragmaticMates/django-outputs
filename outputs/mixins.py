@@ -350,6 +350,7 @@ class ExporterMixin(object):
             content_type=ContentType.objects.get_for_model(model, for_concrete_model=False),
             format=self.export_format,
             context=self.export_context,
+            exporter_path=".".join([self.__class__.__module__, self.__class__.__name__]),
             fields=fields,
             creator=self.user,
             query_string=params.urlencode(),
