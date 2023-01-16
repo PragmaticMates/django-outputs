@@ -92,7 +92,10 @@ class AbstractExport(models.Model):
     @property
     def exporter_class(self):
         try:
-            return import_string(self.exporter_path)
+            if self.exporter_path:
+                return import_string(self.exporter_path)
+            else:
+                raise ModuleNotFoundError()
         except ModuleNotFoundError:
             # TODO: log
             exporter_path = AbstractExport.get_exporter_path(
