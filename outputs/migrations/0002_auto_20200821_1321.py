@@ -24,11 +24,11 @@ class Migration(migrations.Migration):
             name='emails',
             field=django.contrib.postgres.fields.ArrayField(base_field=models.CharField(max_length=33), blank=True, default=list, size=None),
         ),
-        migrations.AlterField(
-            model_name='export',
-            name='items',
-            field=gm2m.fields.GM2MField(*settings.OUTPUTS_RELATED_MODELS, related_name='exports_where_item', through_fields=('gm2m_src', 'gm2m_tgt', 'gm2m_ct', 'gm2m_pk')),
-        ),
+        # migrations.AlterField(
+        #     model_name='export',
+        #     name='items',
+        #     field=gm2m.fields.GM2MField(*settings.OUTPUTS_RELATED_MODELS, related_name='exports_where_item', through_fields=('gm2m_src', 'gm2m_tgt', 'gm2m_ct', 'gm2m_pk')),
+        # ),
         migrations.AlterField(
             model_name='export',
             name='recipients',
