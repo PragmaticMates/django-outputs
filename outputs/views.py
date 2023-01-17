@@ -91,6 +91,7 @@ class SchedulerCreateView(LoginPermissionRequiredMixin, CreateView):
                 'fields': self.export.fields,
                 'format': self.export.format,
                 'context': self.export.context,
+                'exporter_path': self.export.exporter_path,
                 'query_string': self.export.query_string,
                 'recipients': self.export.recipients.all()
             })

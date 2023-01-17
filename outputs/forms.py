@@ -145,7 +145,7 @@ class SchedulerForm(forms.ModelForm):
         model = Scheduler
         fields = ('routine', 'is_active', 'language',
                   'content_type', 'fields',
-                  'format', 'context',
+                  'format', 'context', 'exporter_path',
                   'query_string', 'recipients')
         widgets = {
             'query_string': TextInput,
@@ -166,6 +166,7 @@ class SchedulerForm(forms.ModelForm):
                         Div('content_type', css_class='col-md-4'),
                         Div('context', css_class='col-md-4'),
                         Div('format', css_class='col-md-4'),
+                        Div('exporter_path', css_class='col-md-12'),
                         Div('query_string', css_class='col-md-12'),
                         Div('fields', css_class='col-md-12'),
                     ),
