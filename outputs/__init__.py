@@ -1,3 +1,3 @@
 default_app_config = 'outputs.apps.OutputsConfig'
 
-VERSION = '1.1.2'
+VERSION = '2.1.0'

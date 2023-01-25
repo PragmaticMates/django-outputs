@@ -17,15 +17,19 @@
                 </tr>
             {% endifchanged %}
 
-            {% ifchanged row.model %}
+            {% ifchanged row.exporter_path %}
                 <tr>
                     <td class="model">
-                        {{ row.model|translate|capfirst }}
+                        {% if row.description %}
+                            {{ row.description }}
+                        {% else %}
+                            {{ row.model|translate|capfirst }}
+                        {% endif %}
                         {% if row.format %}
-                            {{ row.format }}
+                            <br>{{ row.format }}
                         {% endif %}
                         <label class="check-container">
-                            <input name="{{ name }}" class="{{ name }}-exporter" {% if row.exporter_key in value %}checked="checked"{% endif %} value="{{ row.exporter_key }}" type="checkbox" />
+                            <input name="{{ name }}" class="{{ name }}-exporter" {% if row.exporter_path in value %}checked="checked"{% endif %} value="{{ row.exporter_path }}" type="checkbox" />
                             <br>
                             <span class="checkmark"></span>
                         </label>

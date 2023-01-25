@@ -143,7 +143,7 @@ class SchedulerForm(forms.ModelForm):
 
     class Meta:
         model = Scheduler
-        fields = ('routine', 'is_active', 'language',
+        fields = ('routine', 'cron_string', 'is_active', 'language',
                   'content_type', 'fields',
                   'format', 'context', 'exporter_path',
                   'query_string', 'recipients')
@@ -176,6 +176,7 @@ class SchedulerForm(forms.ModelForm):
                     _('Management'),
                     'recipients',
                     'routine',
+                    'cron_string',
                     'language',
                     'is_active',
                     css_class='col-md-2'

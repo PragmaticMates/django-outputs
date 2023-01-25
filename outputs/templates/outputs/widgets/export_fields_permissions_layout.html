@@ -17,21 +17,25 @@
                 </tr>
             {% endifchanged %}
 
-            {% ifchanged row.model %}
+            {% ifchanged row.exporter_path %}
                 <tr>
                     <td class="model">
-                        <div class="d-flex">
+                        <div class="nowrap">
                             <label class="check-container">
-                                <input name="{{ field.name }}" class="{{ field.name }}-exporter" {% if row.exporter_key in field.value or row.exporter_key in groups_permissions %}checked="checked"{% endif %} value="{{ row.exporter_key }}" type="checkbox" {% if row.exporter_key in groups_permissions %}disabled="disabled"{% endif %}/>
+                                <input name="{{ field.name }}" class="{{ field.name }}-exporter" {% if row.exporter_path in field.value or row.exporter_path in groups_permissions %}checked="checked"{% endif %} value="{{ row.exporter_path }}" type="checkbox" {% if row.exporter_path in groups_permissions %}disabled="disabled"{% endif %}>
                                 <span class="checkmark"></span>
                             </label>
 
                             <span class="h4 mb-0">
-                                {{ row.model|translate|capfirst }}
-                                {% if row.format %}
-                                    {{ row.format }}
+                                {% if row.description %}
+                                    {{ row.description }}
+                                {% else %}
+                                    {{ row.model|translate|capfirst }}
                                 {% endif %}
                             </span>
+{#                            {% if row.format %}#}
+{#                                <br><span class="mb-0">{{ row.format }}</span>#}
+{#                            {% endif %}#}
                         <div>
                     </td>
                     {% for group in row.field_groups %}

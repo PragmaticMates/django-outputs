@@ -1,5 +1,10 @@
 import inspect
 
+from cron_descriptor import CasingTypeEnum, ExpressionDescriptor
+from croniter import croniter
+from django.core.exceptions import ValidationError
+from django.utils.timezone import now
+
 from auditlog.models import AuditlogHistoryField
 from auditlog.registry import auditlog
 from django.conf import settings
@@ -15,10 +20,10 @@ from django.urls import reverse, NoReverseMatch, resolve, Resolver404
 from django.utils.module_loading import import_string
 try:
     # older Django
-    from django.utils.translation import ugettext_lazy as _
+    from django.utils.translation import ugettext_lazy as _, get_language
 except ImportError:
     # Django >= 3
-    from django.utils.translation import gettext_lazy as _
+    from django.utils.translation import gettext_lazy as _, get_language
 from gm2m import GM2MField
 from pytz import timezone
 from rq.exceptions import NoSuchJobError
@@ -76,6 +81,9 @@ class AbstractExport(models.Model):
 
     @staticmethod
     def get_exporter_path(model_class, context, format):
+        """
+        Returns generic exporter path based on content object model, export context and format.
+        """
         exports_module = exporters_module_mapping.get(model_class._meta.label, None)
 
         if isinstance(exports_module, dict):
@@ -300,11 +308,13 @@ class Scheduler(AbstractExport):
     ROUTINE_DAILY = 'DAILY'                 # every morning at 8:00
     ROUTINE_WEEKLY = 'WEEKLY'               # every monday at 8:00
     ROUTINE_MONTHLY = 'MONTHLY'             # at 1st of current month TODO: reports will be for the previous month
+    ROUTINE_CUSTOM = 'CUSTOM'               # custom cron string
     ROUTINES = [
         # (ROUTINE_OFTEN, _('often')),
         (ROUTINE_DAILY, _('daily')),
         (ROUTINE_WEEKLY, _('weekly')),
-        (ROUTINE_MONTHLY, _('monthly'))
+        (ROUTINE_MONTHLY, _('monthly')),
+        (ROUTINE_CUSTOM, _('custom'))
     ]
 
     ROUTINE_DESCRIPTIONS = {
@@ -312,9 +322,11 @@ class Scheduler(AbstractExport):
         ROUTINE_DAILY: _('at 8:00'),  # 6 UTC
         ROUTINE_WEEKLY: _('on Monday'),
         ROUTINE_MONTHLY: _('on the first day'),
+        ROUTINE_CUSTOM: _('defined by user'),
     }
 
     routine = models.CharField(_('routine'), choices=ROUTINES, max_length=7)
+    cron_string = models.CharField(_('cron string'), max_length=13, blank=True)
     is_active = models.BooleanField(_('active'), default=True)
     executions = ArrayField(verbose_name=_('executions'), base_field=models.DateTimeField(), blank=True, default=list)
     job_id = models.CharField('job ID', max_length=36, blank=True)
@@ -329,8 +341,32 @@ class Scheduler(AbstractExport):
         ordering = ('created',)
         default_permissions = getattr(settings, 'DEFAULT_PERMISSIONS', ('add', 'change', 'delete', 'view'))
 
+        constraints = [
+            # constraint of empty cront string for custom routine
+            models.CheckConstraint(check=
+                                   # models.Q(cron_string='') ^ ~models.Q(routine='CUSTOM'),  # Added in Django 4.1 (https://docs.djangoproject.com/en/4.1/releases/4.1/#models)
+                                   models.Q(models.Q(cron_string='') & ~models.Q(routine='CUSTOM')) |
+                                   models.Q(~models.Q(cron_string='') & models.Q(routine='CUSTOM')),
+                                   name='custom_cron_string')
+        ]
+
     def __str__(self):
         return '{} #{} ({} - {})'.format(_('Scheduler'), self.pk, self.content_type.model_class()._meta.verbose_name_plural, self.get_routine_display())
+
+    def clean(self):
+        if not((self.cron_string == '') ^ (self.routine == self.ROUTINE_CUSTOM)):
+            if self.cron_string != '':
+                raise ValidationError(_('Cron string has to be empty for routine %s') % self.get_routine_display())
+            if self.routine == self.ROUTINE_CUSTOM:
+                raise ValidationError(_('Missing cron string'))
+
+        if self.routine == self.ROUTINE_CUSTOM:
+            try:
+                croniter(self.cron_string, now())
+            except Exception as e:
+                raise ValidationError(_('Invalid cron string: %s') % str(e))
+
+        return super().clean()
 
     def get_absolute_url(self):
         return reverse('outputs:scheduler_detail', args=(self.pk,))
@@ -373,6 +409,19 @@ class Scheduler(AbstractExport):
     def routine_description(self):
         return self.ROUTINE_DESCRIPTIONS.get(self.routine)
 
+    @property
+    def cron_description(self):
+        language = get_language()
+
+        descriptor = ExpressionDescriptor(
+            expression=self.get_cron_string(),
+            throw_exception_on_parse_error=False,
+            casing_type=CasingTypeEnum.Sentence,
+            use_24hour_time_format=True,
+            locale_code='%s_%s' % (language, language.upper())
+        )
+        return descriptor.get_description()
+
     def cancel_schedule(self):
         if self.is_scheduled:
             self.job.delete()
@@ -387,22 +436,25 @@ class Scheduler(AbstractExport):
 
             # schedule export as cron job
             scheduler_class_name = f'{self.__class__.__module__}.{self.__class__.__name__}'
-            job = scheduler.cron(
-                self.cron,
-                func=schedule_export,
-                args=(self.pk, scheduler_class_name),
-                timeout=settings.RQ_QUEUES['cron']['DEFAULT_TIMEOUT']
-            )
-            
-            self.job_id = job.id
+
+            try:
+                job = scheduler.cron(
+                    cron_string=self.get_cron_string(),
+                    func=schedule_export,
+                    args=(self.pk, scheduler_class_name),
+                    timeout=settings.RQ_QUEUES['cron']['DEFAULT_TIMEOUT']
+                )
+                self.job_id = job.id
+            except Exception as e:
+                # TODO: log
+                print(e)
         else:
             # inactive scheduler doesn't have job ID
             self.job_id = ''
 
         self.save(update_fields=['job_id'])
 
-    @property
-    def cron(self):
+    def get_cron_string(self):
         # ┌───────────── minute (0 - 59)
         # │ ┌───────────── hour (0 - 23)
         # │ │ ┌───────────── day of the month (1 - 31)
@@ -426,6 +478,9 @@ class Scheduler(AbstractExport):
 
         if self.routine == self.ROUTINE_MONTHLY:
             return "0 5 1 * *"
+
+        if self.routine == self.ROUTINE_CUSTOM:
+            return self.cron_string
 
         raise NotImplementedError()
 

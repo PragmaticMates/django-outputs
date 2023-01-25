@@ -200,13 +200,10 @@ class SelectExportMixin(ConfirmExportMixin, ExportFieldsPermissionsMixin):
         if not permissions:
             return []
 
-        app_name, model_name = self.exporter_class.queryset.model._meta.label.split('.')
-        export_format = self.exporter_class.export_format
-        export_format = export_format.capitalize()
-        exporter_key = '.'.join([app_name, model_name, export_format])
+        exporter_path = self.exporter_class.get_path()
 
         try:
-            return permissions[exporter_key]
+            return permissions[exporter_path]
         except KeyError:
             return []
 
@@ -246,6 +243,10 @@ class FilterExporterMixin(object):
     def get_model(cls):
         return cls.queryset.model if cls.queryset is not None else cls.model
 
+    @classmethod
+    def get_app_and_model(cls):
+        return cls.get_model()._meta.label.split('.')
+
     def get_filter(self):
         return self.filter_class(self.params, queryset=self.get_whole_queryset(self.params))
 
@@ -277,6 +278,7 @@ class ExporterMixin(object):
     export_format = None
     export_context = None
     send_separately = False
+    description = ''
 
     def __init__(self, user, recipients, **kwargs):
         self.filename = kwargs.pop('filename', self.filename)
@@ -286,6 +288,14 @@ class ExporterMixin(object):
 
         # initialize stream
         self.output = io.BytesIO()
+
+    @classmethod
+    def get_path(cls):
+        return ".".join([cls.__module__, cls.__name__])
+
+    @classmethod
+    def get_description(cls):
+        return cls.description
 
     def get_filename(self):
         if not self.filename:

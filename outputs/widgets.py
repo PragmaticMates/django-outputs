@@ -8,7 +8,9 @@ from django.db.models import QuerySet
 from django.forms import CheckboxSelectMultiple, MultipleChoiceField
 from django.forms.widgets import ChoiceWidget
 from django.template.loader import get_template
+from django.utils.module_loading import import_string
 from django.utils.safestring import mark_safe
+
 try:
     # Django 3.1
     from django.db.models import JSONField
@@ -50,7 +52,7 @@ class ExportFieldsPermissionsMixin(object):
         table = self.get_table()
 
         for row in table:
-            choices.append(row['exporter_key'])
+            choices.append(row['exporter_path'])
 
             for group in row['field_groups']:
                 # row may contain empty groups to fill up empty columns, skipping those here
@@ -64,48 +66,51 @@ class ExportFieldsPermissionsMixin(object):
 
     def load_table_and_width(self):
         table = []
-        row = {}
 
         # we are starting with dictionary to guarantee ordered vertical structure of the table
         exportable_fields = self.get_all_exportable_fields()
         max_field_groups = self.get_max_field_groups()
 
-        for app, models in exportable_fields.items():
-            row['app'] = app
+        for exporter_path, field_groups in exportable_fields.items():
+            # TODO: not every exporter subclass contains model
+            exporter = import_string(exporter_path)
+            app_label, model_name = exporter.get_app_and_model()
 
-            for model, formats in models.items():
-                row['model'] = model
+            row = {
+                'app': app_label,
+                'model': model_name,
+                'format': exporter.export_format.capitalize(),
+                'description': exporter.get_description(),
+                'exporter_path': exporter_path,
+                'field_groups': []
+            }
 
-                for format, field_groups in formats.items():
-                    row['format'] = format if len(formats) > 1 else None
-                    row['exporter_key'] = '.'.join([app, model, format])
-                    row['field_groups'] = []
+            index = 0
+            for group, fields in field_groups.items():
+                group_dict = {
+                    'label': group,
+                    'key': '/'.join([row['exporter_path'], 'group', str(index)]),
+                    'permissions': []
+                }
 
-                    index = 0
-                    for group, fields in field_groups.items():
-                        group_dict = {
-                            'label': group,
-                            'key': '/'.join([row['exporter_key'], 'group', str(index)]),
-                            'permissions': []
-                        }
+                for field in fields:
+                    group_dict['permissions'].append({
+                        'label': field[1],
+                        'key': '/'.join([row['exporter_path'], field[0]]),
+                    })
 
-                        for field in fields:
-                            group_dict['permissions'].append({
-                                'label': field[1],
-                                'key': '/'.join([row['exporter_key'], field[0]]),
-                            })
+                row['field_groups'].append(dict(group_dict))
+                index += 1
 
-                        row['field_groups'].append(dict(group_dict))
-                        index += 1
+            # fill the row with empty groups to have equal number of columns in every row
+            if index < max_field_groups:
+                for i in range(index, max_field_groups):
+                    row['field_groups'].append({})
 
-                    # fill the row with empty groups to have equal number of columns in every row
-                    if index < max_field_groups:
-                        for i in range(index, max_field_groups):
-                            row['field_groups'].append({})
+            table.append(row)
 
-                    table.append(dict(row))
-
-        self.table = table
+        # TODO: sort by x['app'] and x['model']
+        self.table = sorted(table, key=lambda x: x['app'])
         self.table_width = max_field_groups+1
 
     def load_all_exportable_fields(self):
@@ -135,19 +140,7 @@ class ExportFieldsPermissionsMixin(object):
             except AttributeError:
                 pass
 
-            app_name, model_name = exporter.get_model()._meta.label.split('.')
-            export_format = exporter.export_format
-            export_format = export_format.capitalize()
-
-            # add app to dictionary of exportable fields if not there already, else update
-            if app_name not in all_exportable_fields:
-                all_exportable_fields[app_name] = {model_name: {}}
-            elif model_name not in all_exportable_fields[app_name]:
-                all_exportable_fields[app_name].update({model_name: {}})
-
-            all_exportable_fields[app_name][model_name].update({
-                export_format: selectable_fields
-            })
+            all_exportable_fields[exporter.get_path()] = selectable_fields
 
             # looking for max number of groups which later translates to number of table columns
             if len(selectable_fields) > max_field_groups:
@@ -177,21 +170,20 @@ class ExportFieldsPermissionsMixin(object):
 
             # due to previous bug this case is handled instead of creating migration
             if permissions is None:
-                permissions={}
+                permissions = {}
             # if two loads where not enough there gotta be something wrong
             elif not isinstance(permissions, dict):
                 raise TypeError()
 
-            for exporter_key, permitted_fields in permissions.items():
+            for exporter_path, permitted_fields in permissions.items():
                 for field in permitted_fields:
-                    permission_keys.add('/'.join([exporter_key, field]))
+                    permission_keys.add('/'.join([exporter_path, field]))
 
                 # set group and exporter fields
-                app, model, format = exporter_key.split('.')
                 exporter_fields_count = 0
                 group_index = -1
 
-                for group, group_fields in exportable_fields[app][model][format].items():
+                for group, group_fields in exportable_fields[exporter_path].items():
                     exporter_fields_count += len(group_fields)
                     group_index += 1
                     group_permitted_count = 0
@@ -203,11 +195,11 @@ class ExportFieldsPermissionsMixin(object):
 
                     # if all fields within a group are permitted add group_key too (to initial values)
                     if group_permitted_count == len(group_fields):
-                        permission_keys.add('/'.join([exporter_key, 'group', str(group_index)]))
+                        permission_keys.add('/'.join([exporter_path, 'group', str(group_index)]))
 
-                # if all fields of exporter are permitted add exporter_key too (to initial values)
+                # if all fields of exporter are permitted add exporter_path too (to initial values)
                 if len(permitted_fields) == exporter_fields_count:
-                    permission_keys.add(exporter_key)
+                    permission_keys.add(exporter_path)
 
         return permission_keys
 
@@ -226,13 +218,13 @@ class ExportFieldsPermissionsMixin(object):
                 raise ValueError()
             # we output only field values, exporter and group keys are only auxiliary
             elif len(keys) == 2:
-                exporter_key = keys[0]
+                exporter_path = keys[0]
                 field = keys[1]
 
-                if exporter_key not in output:
-                    output[exporter_key] = []
+                if exporter_path not in output:
+                    output[exporter_path] = []
 
-                output[exporter_key].append(field)
+                output[exporter_path].append(field)
 
         # output dictionary compressed to string if compress=True and it is not empty
         if output and compress:
