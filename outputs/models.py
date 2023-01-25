@@ -29,15 +29,15 @@ from pytz import timezone
 from rq.exceptions import NoSuchJobError
 from rq.job import Job
 
-from outputs import jobs
+from outputs import jobs, settings as outputs_settings
 from outputs.cron import schedule_export
 from outputs.querysets import ExportQuerySet, SchedulerQuerySet
 
 from pragmatic.templatetags.pragmatic_tags import filtered_values
 
 
-exporters_module_mapping = settings.OUTPUTS_EXPORTERS_MODULE_MAPPING
-related_models = settings.OUTPUTS_RELATED_MODELS
+exporters_module_mapping = outputs_settings.EXPORTERS_MODULE_MAPPING
+related_models = outputs_settings.RELATED_MODELS
 
 
 class AbstractExport(models.Model):

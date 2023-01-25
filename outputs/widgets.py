@@ -11,6 +11,8 @@ from django.template.loader import get_template
 from django.utils.module_loading import import_string
 from django.utils.safestring import mark_safe
 
+from outputs import settings as outputs_settings
+
 try:
     # Django 3.1
     from django.db.models import JSONField
@@ -118,7 +120,9 @@ class ExportFieldsPermissionsMixin(object):
 
         from outputs.mixins import ExcelExporterMixin
         for cls in ExcelExporterMixin.__subclasses__():
-            if hasattr(cls, 'selectable_fields') and not cls.exclude_in_permission_widget:
+            if hasattr(cls, 'selectable_fields') and \
+                not cls.exclude_in_permission_widget and \
+                cls.get_path() not in outputs_settings.EXCLUDE_EXPORTERS:
                 exporters.add(cls)
 
         all_exportable_fields = {}

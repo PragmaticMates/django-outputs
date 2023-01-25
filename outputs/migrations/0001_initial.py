@@ -5,6 +5,7 @@ import django.contrib.postgres.fields
 from django.db import migrations, models
 import django.db.models.deletion
 import gm2m.fields
+from outputs import settings as outputs_settings
 
 
 class Migration(migrations.Migration):
@@ -16,7 +17,7 @@ class Migration(migrations.Migration):
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
-    for dependency in getattr(settings, 'OUTPUTS_MIGRATION_DEPENDENCIES', []):
+    for dependency in outputs_settings.MIGRATION_DEPENDENCIES:
         dependencies.append(dependency)
 
     operations = [
@@ -60,7 +61,7 @@ class Migration(migrations.Migration):
                 ('total', models.PositiveIntegerField(default=0)),
                 ('content_type', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='contenttypes.ContentType')),
                 ('creator', models.ForeignKey(blank=True, default=None, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='export_where_creator', to=settings.AUTH_USER_MODEL)),
-                ('items', gm2m.fields.GM2MField(*settings.OUTPUTS_RELATED_MODELS, related_name='exports_where_item', through_fields=('gm2m_src', 'gm2m_tgt', 'gm2m_ct', 'gm2m_pk'))),
+                ('items', gm2m.fields.GM2MField(*outputs_settings.RELATED_MODELS, related_name='exports_where_item', through_fields=('gm2m_src', 'gm2m_tgt', 'gm2m_ct', 'gm2m_pk'))),
                 ('recipients', models.ManyToManyField(related_name='export_where_recipient', to=settings.AUTH_USER_MODEL)),
             ],
             options={
