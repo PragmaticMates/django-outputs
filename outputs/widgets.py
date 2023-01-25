@@ -107,9 +107,10 @@ class ExportFieldsPermissionsMixin(object):
                 for i in range(index, max_field_groups):
                     row['field_groups'].append({})
 
-            table.append(dict(row))
+            table.append(row)
 
-        self.table = table
+        # TODO: sort by x['app'] and x['model']
+        self.table = sorted(table, key=lambda x: x['app'])
         self.table_width = max_field_groups+1
 
     def load_all_exportable_fields(self):
