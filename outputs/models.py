@@ -1,5 +1,7 @@
 import inspect
 
+from django.core.exceptions import ValidationError
+
 from auditlog.models import AuditlogHistoryField
 from auditlog.registry import auditlog
 from django.conf import settings
@@ -298,11 +300,13 @@ class Scheduler(AbstractExport):
     ROUTINE_DAILY = 'DAILY'                 # every morning at 8:00
     ROUTINE_WEEKLY = 'WEEKLY'               # every monday at 8:00
     ROUTINE_MONTHLY = 'MONTHLY'             # at 1st of current month TODO: reports will be for the previous month
+    ROUTINE_CUSTOM = 'CUSTOM'               # custom cron string
     ROUTINES = [
         # (ROUTINE_OFTEN, _('often')),
         (ROUTINE_DAILY, _('daily')),
         (ROUTINE_WEEKLY, _('weekly')),
-        (ROUTINE_MONTHLY, _('monthly'))
+        (ROUTINE_MONTHLY, _('monthly')),
+        (ROUTINE_CUSTOM, _('custom'))
     ]
 
     ROUTINE_DESCRIPTIONS = {
@@ -310,9 +314,11 @@ class Scheduler(AbstractExport):
         ROUTINE_DAILY: _('at 8:00'),  # 6 UTC
         ROUTINE_WEEKLY: _('on Monday'),
         ROUTINE_MONTHLY: _('on the first day'),
+        ROUTINE_CUSTOM: _('defined by user'),
     }
 
     routine = models.CharField(_('routine'), choices=ROUTINES, max_length=7)
+    cron_string = models.CharField(_('cron string'), max_length=13, blank=True)
     is_active = models.BooleanField(_('active'), default=True)
     executions = ArrayField(verbose_name=_('executions'), base_field=models.DateTimeField(), blank=True, default=list)
     job_id = models.CharField('job ID', max_length=36, blank=True)
@@ -327,8 +333,25 @@ class Scheduler(AbstractExport):
         ordering = ('created',)
         default_permissions = getattr(settings, 'DEFAULT_PERMISSIONS', ('add', 'change', 'delete', 'view'))
 
+        constraints = [
+            # constraint of empty cront string for custom routine
+            models.CheckConstraint(check=
+                                   # models.Q(cron_string='') ^ ~models.Q(routine='CUSTOM'),  # Added in Django 4.1 (https://docs.djangoproject.com/en/4.1/releases/4.1/#models)
+                                   models.Q(models.Q(cron_string='') & ~models.Q(routine='CUSTOM')) |
+                                   models.Q(~models.Q(cron_string='') & models.Q(routine='CUSTOM')),
+                                   name='custom_cron_string')
+        ]
+
     def __str__(self):
         return '{} #{} ({} - {})'.format(_('Scheduler'), self.pk, self.content_type.model_class()._meta.verbose_name_plural, self.get_routine_display())
+
+    def clean(self):
+        if not((self.cron_string == '') ^ (self.routine == self.ROUTINE_CUSTOM)):
+            if self.cron_string != '':
+                raise ValidationError('Invalid routine for custom cron string')
+            if self.routine == self.ROUTINE_CUSTOM:
+                raise ValidationError(_('Missing cron string'))
+        return super().clean()
 
     def get_absolute_url(self):
         return reverse('outputs:scheduler_detail', args=(self.pk,))
@@ -386,7 +409,7 @@ class Scheduler(AbstractExport):
             # schedule export as cron job
             scheduler_class_name = f'{self.__class__.__module__}.{self.__class__.__name__}'
             job = scheduler.cron(
-                self.cron,
+                cron_string=self.get_cron_string(),
                 func=schedule_export,
                 args=(self.pk, scheduler_class_name),
                 timeout=settings.RQ_QUEUES['cron']['DEFAULT_TIMEOUT']
@@ -399,8 +422,7 @@ class Scheduler(AbstractExport):
 
         self.save(update_fields=['job_id'])
 
-    @property
-    def cron(self):
+    def get_cron_string(self):
         # ┌───────────── minute (0 - 59)
         # │ ┌───────────── hour (0 - 23)
         # │ │ ┌───────────── day of the month (1 - 31)
@@ -424,6 +446,9 @@ class Scheduler(AbstractExport):
 
         if self.routine == self.ROUTINE_MONTHLY:
             return "0 5 1 * *"
+
+        if self.routine == self.ROUTINE_CUSTOM:
+            return self.cron_string
 
         raise NotImplementedError()
 

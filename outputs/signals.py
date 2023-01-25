@@ -51,7 +51,10 @@ def notify_about_scheduler(sender, instance, created, **kwargs):
     Signal to notify when scheduler is created.
     """
     if created:
-        recipients = get_user_model().objects.managers().exclude(pk=instance.creator.pk)
+        recipients = get_user_model().objects.managers()
+
+        if instance.creator:
+            recipients = recipients.exclude(pk=instance.creator.pk)
 
         for recipient in recipients:
             notify(None, recipient, 'SCHEDULER_CREATED', actor=instance.creator, object=instance)
