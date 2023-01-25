@@ -13,7 +13,7 @@ def set_exporter_path_export(*args, **kwargs):
 
 
 def set_exporter_path_scheduler(*args, **kwargs):
-    for scheduler in Scheduler.objects.id('id'):
+    for scheduler in Scheduler.objects.only('id'):
         scheduler.exporter_path = AbstractExport.get_exporter_path(
             model_class=scheduler.model_class,
             context=scheduler.context,
