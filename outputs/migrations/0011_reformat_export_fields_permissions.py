@@ -13,7 +13,6 @@ def reformat_export_fields_permissions(*args, **kwargs):
         permissions = user.export_fields_permissions
         new_permissions = {}
 
-        # {'invoicing.Invoice.Xlsx': ['id', 'created', 'get_type_dis...
         if isinstance(permissions, str):
             permissions = json.loads(permissions)
 
@@ -33,7 +32,6 @@ def undo_reformat_export_fields_permissions(*args, **kwargs):
         permissions = user.export_fields_permissions
         old_permissions = {}
 
-        # {'swida.core.accounts.exporters.TeamXlsxListExporter': ['id',
         if isinstance(permissions, str):
             permissions = json.loads(permissions)
 
