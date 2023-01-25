@@ -27,7 +27,7 @@
                 <dt>{% trans 'Scheduled' %}</dt>
                 <dd>
                     <span data-toggle="tooltip" data-placement="top" title="{{ scheduler.job_id }}">
-                        {{ scheduler.is_scheduled|yesno }}
+                        {{ scheduler.is_scheduled|yesno }}{% if scheduler.is_scheduled %}, {{ scheduler.schedule_time }}{% else %}{{ scheduler.is_scheduled|yesno }}{% endif %}
                     </span>
                 </dd>
 

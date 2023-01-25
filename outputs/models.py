@@ -1,6 +1,9 @@
 import inspect
 
+from cron_descriptor import CasingTypeEnum, ExpressionDescriptor
+from croniter import croniter
 from django.core.exceptions import ValidationError
+from django.utils.timezone import now
 
 from auditlog.models import AuditlogHistoryField
 from auditlog.registry import auditlog
@@ -15,7 +18,7 @@ from django.template import Context, Template
 from django.template.defaultfilters import title
 from django.urls import reverse, NoReverseMatch, resolve, Resolver404
 from django.utils.module_loading import import_string
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import ugettext_lazy as _, get_language
 from gm2m import GM2MField
 from pytz import timezone
 from rq.exceptions import NoSuchJobError
@@ -348,9 +351,16 @@ class Scheduler(AbstractExport):
     def clean(self):
         if not((self.cron_string == '') ^ (self.routine == self.ROUTINE_CUSTOM)):
             if self.cron_string != '':
-                raise ValidationError('Invalid routine for custom cron string')
+                raise ValidationError(_('Cron string has to be empty for routine %s') % self.get_routine_display())
             if self.routine == self.ROUTINE_CUSTOM:
                 raise ValidationError(_('Missing cron string'))
+
+        if self.routine == self.ROUTINE_CUSTOM:
+            try:
+                croniter(self.cron_string, now())
+            except Exception as e:
+                raise ValidationError(_('Invalid cron string: %s') % str(e))
+
         return super().clean()
 
     def get_absolute_url(self):
@@ -394,6 +404,19 @@ class Scheduler(AbstractExport):
     def routine_description(self):
         return self.ROUTINE_DESCRIPTIONS.get(self.routine)
 
+    @property
+    def cron_description(self):
+        language = get_language()
+
+        descriptor = ExpressionDescriptor(
+            expression=self.get_cron_string(),
+            throw_exception_on_parse_error=False,
+            casing_type=CasingTypeEnum.Sentence,
+            use_24hour_time_format=True,
+            locale_code='%s_%s' % (language, language.upper())
+        )
+        return descriptor.get_description()
+
     def cancel_schedule(self):
         if self.is_scheduled:
             self.job.delete()
@@ -408,14 +431,18 @@ class Scheduler(AbstractExport):
 
             # schedule export as cron job
             scheduler_class_name = f'{self.__class__.__module__}.{self.__class__.__name__}'
-            job = scheduler.cron(
-                cron_string=self.get_cron_string(),
-                func=schedule_export,
-                args=(self.pk, scheduler_class_name),
-                timeout=settings.RQ_QUEUES['cron']['DEFAULT_TIMEOUT']
-            )
-            
-            self.job_id = job.id
+
+            try:
+                job = scheduler.cron(
+                    cron_string=self.get_cron_string(),
+                    func=schedule_export,
+                    args=(self.pk, scheduler_class_name),
+                    timeout=settings.RQ_QUEUES['cron']['DEFAULT_TIMEOUT']
+                )
+                self.job_id = job.id
+            except Exception as e:
+                # TODO: log
+                print(e)
         else:
             # inactive scheduler doesn't have job ID
             self.job_id = ''

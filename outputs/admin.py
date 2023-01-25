@@ -26,4 +26,4 @@ class SchedulerAdmin(admin.ModelAdmin):
     search_fields = ['creator__first_name', 'creator__last_name']
     list_select_related = ['creator', 'content_type']
     list_filter = ['routine', 'is_active', 'format', 'context', 'content_type']
-    list_display = ('id', 'routine', 'is_active', 'content_type', 'format', 'creator', 'created')
+    list_display = ('id', 'is_active', 'routine', 'cron_string', 'cron_description', 'content_type', 'format', 'creator', 'created')
