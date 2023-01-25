@@ -27,7 +27,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='export',
             name='items',
-            field=gm2m.fields.GM2MField(*settings.OUTPUTS_RELATED_MODELS, related_name='exports_where_item', through_fields=('gm2m_src', 'gm2m_tgt', 'gm2m_ct', 'gm2m_pk')),
+            field=gm2m.fields.GM2MField(related_name='exports_where_item', through_fields=('gm2m_src', 'gm2m_tgt', 'gm2m_ct', 'gm2m_pk')),
         ),
         migrations.AlterField(
             model_name='export',

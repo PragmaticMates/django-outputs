@@ -1,0 +1,6 @@
+from django.conf import settings
+
+EXCLUDE_EXPORTERS = getattr(settings, 'OUTPUTS_EXCLUDE_EXPORTERS', [])
+EXPORTERS_MODULE_MAPPING = getattr(settings, 'OUTPUTS_EXPORTERS_MODULE_MAPPING', {})
+MIGRATION_DEPENDENCIES = getattr(settings, 'OUTPUTS_MIGRATION_DEPENDENCIES', [])
+RELATED_MODELS = getattr(settings, 'OUTPUTS_RELATED_MODELS', [])
