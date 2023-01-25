@@ -71,6 +71,9 @@ class AbstractExport(models.Model):
 
     @staticmethod
     def get_exporter_path(model_class, context, format):
+        """
+        Returns generic exporter path based on content object model, export context and format.
+        """
         exports_module = exporters_module_mapping.get(model_class._meta.label, None)
 
         if isinstance(exports_module, dict):
