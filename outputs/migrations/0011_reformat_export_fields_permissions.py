@@ -9,6 +9,9 @@ from outputs.models import AbstractExport
 
 
 def reformat_export_fields_permissions(*args, **kwargs):
+    if not hasattr(get_user_model(), 'export_fields_permissions'):
+        return
+
     for user in get_user_model().objects.exclude(export_fields_permissions={}):
         permissions = user.export_fields_permissions
         new_permissions = {}
@@ -28,6 +31,9 @@ def reformat_export_fields_permissions(*args, **kwargs):
 
 
 def undo_reformat_export_fields_permissions(*args, **kwargs):
+    if not hasattr(get_user_model(), 'export_fields_permissions'):
+        return
+
     for user in get_user_model().objects.exclude(export_fields_permissions={}):
         permissions = user.export_fields_permissions
         old_permissions = {}
