@@ -326,7 +326,7 @@ class Scheduler(AbstractExport):
     }
 
     routine = models.CharField(_('routine'), choices=ROUTINES, max_length=7)
-    cron_string = models.CharField(_('cron string'), max_length=13, blank=True)
+    cron_string = models.CharField(_('cron string'), max_length=32, blank=True)
     is_active = models.BooleanField(_('active'), default=True)
     executions = ArrayField(verbose_name=_('executions'), base_field=models.DateTimeField(), blank=True, default=list)
     job_id = models.CharField('job ID', max_length=36, blank=True)
