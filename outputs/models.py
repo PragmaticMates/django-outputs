@@ -437,7 +437,8 @@ class Scheduler(AbstractExport):
                     cron_string=self.get_cron_string(),
                     func=schedule_export,
                     args=(self.pk, scheduler_class_name),
-                    timeout=settings.RQ_QUEUES['cron']['DEFAULT_TIMEOUT']
+                    timeout=settings.RQ_QUEUES['cron']['DEFAULT_TIMEOUT'],
+                    use_local_timezone=True
                 )
                 self.job_id = job.id
             except Exception as e:
@@ -466,13 +467,13 @@ class Scheduler(AbstractExport):
         #     return "* * * * *"
 
         if self.routine == self.ROUTINE_DAILY:
-            return "0 5 * * *"
+            return "0 7 * * *"
 
         if self.routine == self.ROUTINE_WEEKLY:
-            return "0 5 * * 1"
+            return "0 7 * * 1"
 
         if self.routine == self.ROUTINE_MONTHLY:
-            return "0 5 1 * *"
+            return "0 7 1 * *"
 
         if self.routine == self.ROUTINE_CUSTOM:
             return self.cron_string

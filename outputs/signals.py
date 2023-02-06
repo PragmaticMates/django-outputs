@@ -31,7 +31,7 @@ def reschedule_scheduler(sender, instance, **kwargs):
     """
     Signal to check if routine of the scheduler changed.
     """
-    if SignalsHelper.attribute_changed(instance, ['is_active', 'routine']):
+    if SignalsHelper.attribute_changed(instance, ['is_active', 'routine', 'cron_string']):
         SignalsHelper.add_task_and_connect(sender, instance, schedule_scheduler, [instance])
 
 
