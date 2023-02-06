@@ -130,7 +130,7 @@ class SchedulerForm(forms.ModelForm):
     recipients = forms.ModelMultipleChoiceField(
         label=_('Recipients'),
         queryset=get_user_model().objects.all(),
-        # widget=UsersWidget(),
+        # widget=UsersWidget(),  # TODO: out of app context
         required=True,
     )
 
