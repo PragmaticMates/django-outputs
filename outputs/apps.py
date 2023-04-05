@@ -1,5 +1,10 @@
 from django.apps import AppConfig
-from django.utils.translation import ugettext_lazy as _
+try:
+    # older Django
+    from django.utils.translation import ugettext_lazy as _
+except ImportError:
+    # Django >= 3
+    from django.utils.translation import gettext_lazy as _
 
 
 class OutputsConfig(AppConfig):

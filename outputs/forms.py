@@ -3,7 +3,12 @@ from crispy_forms.layout import Layout, Row, Div, Fieldset, Submit
 from django import forms
 from django.contrib.contenttypes.models import ContentType
 from django.forms import BooleanField, CheckboxInput, TextInput, Textarea
-from django.utils.translation import ugettext_lazy as _
+try:
+    # older Django
+    from django.utils.translation import ugettext_lazy as _
+except ImportError:
+    # Django >= 3
+    from django.utils.translation import gettext_lazy as _
 
 from django.contrib.auth import get_user_model
 from outputs.models import Scheduler, AbstractExport
