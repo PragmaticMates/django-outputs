@@ -21,7 +21,7 @@ class ExportFilter(django_filters.FilterSet):
     total = SliderFilter(label=_('Total items'), step=10, has_range=True, segment='outputs.Export.total')
     creator = django_filters.ModelChoiceFilter(queryset=get_user_model().objects.all(), widget=Select2Widget)
     content_type = django_filters.ModelChoiceFilter(
-        queryset=ContentType.objects.filter(pk__in=Export.objects.order_by('content_type').values_list('content_type', flat=True).distinct()),
+        queryset=ContentType.objects.filter(pk__in=Export.objects.order_by('content_type__app_label', 'content_type__model').values_list('content_type', flat=True).distinct()),
         widget=Select2Widget
     )
 
@@ -88,7 +88,7 @@ class SchedulerFilter(django_filters.FilterSet):
     created = django_filters.DateFromToRangeFilter()
     creator = django_filters.ModelChoiceFilter(queryset=get_user_model().objects.all(), widget=Select2Widget)
     content_type = django_filters.ModelChoiceFilter(
-        queryset=ContentType.objects.filter(pk__in=Scheduler.objects.order_by('content_type').values_list('content_type', flat=True).distinct()),
+        queryset=ContentType.objects.filter(pk__in=Scheduler.objects.order_by('content_type__app_label', 'content_type__model').values_list('content_type', flat=True).distinct()),
         widget=Select2Widget
     )
     is_active = django_filters.ChoiceFilter(label=_('Active'), empty_label=_("Doesn't matter"), choices=[('True', _("Yes")), ('False', _("No"))])
