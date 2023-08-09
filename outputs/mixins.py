@@ -8,6 +8,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count, QuerySet
 from django.http import HttpResponse
 from django.template import loader
+from django.urls import translate_url
 from django.utils import translation
 from django.utils.timezone import localtime
 try:
@@ -114,7 +115,8 @@ class ConfirmExportMixin(object):
             'user': self.request.user,
             'recipients': getattr(self, 'recipients', []),
             'params': self.get_params(),
-            'filename': getattr(self, 'filename', None)
+            'filename': getattr(self, 'filename', None),
+            'url': self.get_back_url(),
         }
 
     def get_params(self):
@@ -169,7 +171,8 @@ class SelectExportMixin(ConfirmExportMixin, ExportFieldsPermissionsMixin):
             'recipients': getattr(self, 'recipients', []),
             'params': self.get_params(),
             'selected_fields': self.selected_fields,
-            'filename': getattr(self, 'filename', None)
+            'filename': getattr(self, 'ilename', None),
+            'url': self.get_back_url(),
         }
 
     def form_valid(self, form):
@@ -279,8 +282,10 @@ class ExporterMixin(object):
     export_context = None
     send_separately = False
     description = ''
+    url = ''
 
     def __init__(self, user, recipients, **kwargs):
+        self.url = kwargs.pop('url', self.url)
         self.filename = kwargs.pop('filename', self.filename)
         self.send_separately = kwargs.pop('send_separately', self.send_separately)
         self.user = user
@@ -355,6 +360,18 @@ class ExporterMixin(object):
                 # save None instead of empty list
                 pass
 
+        if self.url:
+            # translate url
+            try:
+                url_lang_code = self.url.split('/')[1]
+            except IndexError:
+                pass
+            else:
+                if url_lang_code != 'en':
+                    with override(url_lang_code):
+                        # override language to url language, as translation only works from active language
+                        self.url = translate_url(self.url, 'en')
+
         # track export
         export = Export.objects.create(
             content_type=ContentType.objects.get_for_model(model, for_concrete_model=False),
@@ -365,6 +382,7 @@ class ExporterMixin(object):
             creator=self.user,
             query_string=params.urlencode(),
             total=items.count(),
+            url=self.url,
             emails=[recipient.email for recipient in self.recipients]
         )
         export.recipients.add(*list(self.recipients))
