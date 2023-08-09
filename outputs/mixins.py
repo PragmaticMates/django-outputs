@@ -368,7 +368,7 @@ class ExporterMixin(object):
                 pass
             else:
                 if url_lang_code != 'en':
-                    with override(url_lang_code):
+                    with translation.override(url_lang_code):
                         # override language to url language, as translation only works from active language
                         self.url = translate_url(self.url, 'en')
 

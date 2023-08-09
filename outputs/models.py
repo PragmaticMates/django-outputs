@@ -20,10 +20,10 @@ from django.urls import reverse, NoReverseMatch, resolve, Resolver404, translate
 from django.utils.module_loading import import_string
 try:
     # older Django
-    from django.utils.translation import ugettext_lazy as _, get_language
+    from django.utils.translation import ugettext_lazy as _, get_language, override
 except ImportError:
     # Django >= 3
-    from django.utils.translation import gettext_lazy as _, get_language
+    from django.utils.translation import gettext_lazy as _, get_language, override
 from gm2m import GM2MField
 from pytz import timezone
 from rq.exceptions import NoSuchJobError
