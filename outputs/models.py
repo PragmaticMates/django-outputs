@@ -217,7 +217,7 @@ class Export(AbstractExport):
     items = GM2MField(*related_models, related_name='exports_where_item')
     total = models.PositiveIntegerField(_('total items'), default=0)
     emails = ArrayField(verbose_name=_('emails'), base_field=models.EmailField(), default=list)
-    url = models.URLField(_('export url'), max_length=400, blank=True)
+    url = models.URLField(_('export url'), max_length=1024, blank=True)
     objects = ExportQuerySet.as_manager()
     history = AuditlogHistoryField()
 
@@ -313,6 +313,7 @@ class Export(AbstractExport):
                         self.url = translate_url(self.url, 'en')
 
         super().save(*args, **kwargs)
+
 
 class Scheduler(AbstractExport):
     ROUTINE_OFTEN = 'OFTEN'                 # for debug purposes
