@@ -116,7 +116,7 @@ class ConfirmExportMixin(object):
             'recipients': getattr(self, 'recipients', []),
             'params': self.get_params(),
             'filename': getattr(self, 'filename', None),
-            'url': self.get_back_url(),
+            'url': self.get_back_url().split('?')[0],
         }
 
     def get_params(self):
@@ -172,7 +172,7 @@ class SelectExportMixin(ConfirmExportMixin, ExportFieldsPermissionsMixin):
             'params': self.get_params(),
             'selected_fields': self.selected_fields,
             'filename': getattr(self, 'ilename', None),
-            'url': self.get_back_url(),
+            'url': self.get_back_url().split('?')[0],
         }
 
     def form_valid(self, form):
