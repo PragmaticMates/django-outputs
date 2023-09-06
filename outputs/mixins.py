@@ -171,7 +171,7 @@ class SelectExportMixin(ConfirmExportMixin, ExportFieldsPermissionsMixin):
             'recipients': getattr(self, 'recipients', []),
             'params': self.get_params(),
             'selected_fields': self.selected_fields,
-            'filename': getattr(self, 'ilename', None),
+            'filename': getattr(self, 'filename', None),
             'url': self.get_back_url().split('?')[0],
         }
 
