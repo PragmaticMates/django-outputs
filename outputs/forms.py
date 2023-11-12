@@ -1,19 +1,16 @@
-from crispy_forms.bootstrap import FormActions
-from crispy_forms.layout import Layout, Row, Div, Fieldset, Submit
 from django import forms
+from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.forms import BooleanField, CheckboxInput, TextInput, Textarea
-try:
-    # older Django
-    from django.utils.translation import ugettext_lazy as _
-except ImportError:
-    # Django >= 3
-    from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 
-from django.contrib.auth import get_user_model
+from crispy_forms.bootstrap import FormActions
+from crispy_forms.layout import Layout, Row, Div, Fieldset, Submit
+
+from pragmatic.forms import SingleSubmitFormHelper
+
 from outputs.models import Scheduler, AbstractExport
 from outputs.widgets import CheckboxSelectMultipleWithDisabled, Legend
-from pragmatic.forms import SingleSubmitFormHelper
 
 
 class ConfirmExportForm(forms.Form):

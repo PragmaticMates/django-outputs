@@ -18,12 +18,7 @@ from django.template import Context, Template
 from django.template.defaultfilters import title
 from django.urls import reverse, NoReverseMatch, resolve, Resolver404
 from django.utils.module_loading import import_string
-try:
-    # older Django
-    from django.utils.translation import ugettext_lazy as _, get_language
-except ImportError:
-    # Django >= 3
-    from django.utils.translation import gettext_lazy as _, get_language
+from django.utils.translation import gettext_lazy as _, get_language
 from gm2m import GM2MField
 from pytz import timezone
 from rq.exceptions import NoSuchJobError
