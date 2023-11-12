@@ -16,9 +16,9 @@ from django.db import models
 from django.http import QueryDict
 from django.template import Context, Template
 from django.template.defaultfilters import title
-from django.urls import reverse, NoReverseMatch, resolve, Resolver404
+from django.urls import reverse, NoReverseMatch, resolve, Resolver404, translate_url
 from django.utils.module_loading import import_string
-from django.utils.translation import gettext_lazy as _, get_language
+from django.utils.translation import gettext_lazy as _, get_language, override
 from gm2m import GM2MField
 from pytz import timezone
 from rq.exceptions import NoSuchJobError
@@ -211,11 +211,8 @@ class Export(AbstractExport):
     status = models.CharField(_('status'), choices=STATUSES, max_length=10, default=STATUS_PENDING)
     items = GM2MField(*related_models, related_name='exports_where_item')
     total = models.PositiveIntegerField(_('total items'), default=0)
-    emails = ArrayField(
-        verbose_name=_('emails'),
-        base_field=models.EmailField(),
-        default=list,
-    )
+    emails = ArrayField(verbose_name=_('emails'), base_field=models.EmailField(), default=list)
+    url = models.URLField(_('export url'), max_length=1024, blank=True)
     objects = ExportQuerySet.as_manager()
     history = AuditlogHistoryField()
 
@@ -258,8 +255,8 @@ class Export(AbstractExport):
         return f'{self._get_base_url()}?export={self.pk}' if base_url is not None else None
 
     def get_absolute_url(self):
-        base_url = self._get_base_url()
-        return f'{self._get_base_url()}?{self.query_string}' if base_url is not None else None
+        base_url = self.url if self.url else self._get_base_url()
+        return f'{base_url}?{self.query_string}' if base_url is not None else None
 
     def get_app_label(self):
         if self.context in [self.CONTEXT_LIST, self.CONTEXT_DETAIL]:
@@ -296,6 +293,21 @@ class Export(AbstractExport):
             'recipients': self.recipients.all(),
             'selected_fields': self.fields
         }
+
+    def save(self, *args, **kwargs):
+        if self.url:
+            # translate url
+            try:
+                url_lang_code = self.url.split('/')[1]
+            except IndexError:
+                pass
+            else:
+                if url_lang_code != 'en':
+                    with override(url_lang_code):
+                        # override language to url language, as translation only works from active language
+                        self.url = translate_url(self.url, 'en')
+
+        super().save(*args, **kwargs)
 
 
 class Scheduler(AbstractExport):
