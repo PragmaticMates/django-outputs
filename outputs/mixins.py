@@ -344,7 +344,7 @@ class ExporterMixin(object):
 
     def save_export(self):
         items = self.get_queryset().all()
-        model = self.queryset.model
+        model = self.queryset.model if hasattr(self, 'queryset') else self.model
         params = getattr(self, 'params', {})
 
         fields = getattr(self, 'selected_fields', None)

@@ -5,8 +5,6 @@ from croniter import croniter
 from django.core.exceptions import ValidationError
 from django.utils.timezone import now
 
-from auditlog.models import AuditlogHistoryField
-from auditlog.registry import auditlog
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
@@ -23,6 +21,9 @@ from gm2m import GM2MField
 from pytz import timezone
 from rq.exceptions import NoSuchJobError
 from rq.job import Job
+
+if 'auditlog' in settings.INSTALLED_APPS:
+    from auditlog.models import AuditlogHistoryField
 
 from outputs import jobs, settings as outputs_settings
 from outputs.cron import schedule_export
@@ -214,7 +215,9 @@ class Export(AbstractExport):
     emails = ArrayField(verbose_name=_('emails'), base_field=models.EmailField(), default=list)
     url = models.URLField(_('export url'), max_length=1024, blank=True)
     objects = ExportQuerySet.as_manager()
-    history = AuditlogHistoryField()
+
+    if 'auditlog' in settings.INSTALLED_APPS:
+        history = AuditlogHistoryField()
 
     class Meta:
         verbose_name = _('export')
@@ -275,7 +278,7 @@ class Export(AbstractExport):
 
     def send_mail(self, language, filename=None):
         export_class_name = f'{self.__class__.__module__}.{self.__class__.__name__}'
-        jobs.mail_export.delay(self.pk, export_class_name, language, filename)
+        jobs.mail_export_by_id.delay(self.pk, export_class_name, language, filename)
 
     @property
     def object_list(self):
@@ -340,7 +343,9 @@ class Scheduler(AbstractExport):
     language = models.CharField(_('language'), choices=settings.LANGUAGES, max_length=2, db_index=True, default='en')
     # TODO: filename
     objects = SchedulerQuerySet.as_manager()
-    history = AuditlogHistoryField()
+
+    if 'auditlog' in settings.INSTALLED_APPS:
+        history = AuditlogHistoryField()
 
     class Meta:
         verbose_name = _('scheduler')
@@ -493,7 +498,9 @@ class Scheduler(AbstractExport):
         raise NotImplementedError()
 
 
-auditlog.register(Export, exclude_fields=['modified', 'creator'])
-auditlog.register(Scheduler, exclude_fields=['modified', 'creator', 'executions', 'job_id'])
+if 'auditlog' in settings.INSTALLED_APPS:
+    from auditlog.registry import auditlog
+    auditlog.register(Export, exclude_fields=['modified', 'creator'])
+    auditlog.register(Scheduler, exclude_fields=['modified', 'creator', 'executions', 'job_id'])
 
 from .signals import *

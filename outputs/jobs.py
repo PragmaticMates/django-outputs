@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import EmailMultiAlternatives
 from django.db.models import Q
@@ -10,7 +11,6 @@ except ImportError:
     # Django >= 3
     from django.utils.translation import gettext_lazy as _
 from django_rq import job
-from whistle.helpers import notify
 
 
 @job('exports')
@@ -27,11 +27,23 @@ def execute_export(exporter_class, exporter_params, language):
 
 #  TODO: review
 @job('exports')
-def mail_export(export_id, export_class_name, language, filename=None):
+def mail_export_by_id(export_id, export_class_name, language, filename=None):
     from outputs.models import Export
     export_class = import_string(export_class_name)
     export = export_class.objects.get(id=export_id)
 
+    export.status = Export.STATUS_PROCESSING
+    export.save(update_fields=['status'])
+
+    # set language
+    translation.activate(language)
+
+    # mail export
+    mail_export(export, language, filename)
+
+
+def mail_export(export, language, filename=None, exporter=None):
+    from outputs.models import Export
     export.status = Export.STATUS_PROCESSING
     export.save(update_fields=['status'])
 
@@ -43,7 +55,7 @@ def mail_export(export_id, export_class_name, language, filename=None):
     verbose_name = model._meta.verbose_name_plural
 
     # get exporter
-    exporter = export.exporter
+    exporter = exporter or export.exporter
 
     # get total number of exported items
     num_items = export.total
@@ -61,19 +73,22 @@ def mail_export(export_id, export_class_name, language, filename=None):
         details += '{}: {}\n\n'.format(_('Export ID'), str(export.id))
         details += '{}: {}\n'.format(_('Error'), str(e))
 
-        notify_users = get_user_model().objects \
-            .active()\
-            .filter(
-                Q(is_superuser=True) |
-                Q(pk=export.creator.pk) |
-                Q(pk__in=export.recipients.all())
-            ).distinct()
+        if 'whistle' in settings.INSTALLED_APPS:
+            from whistle.helpers import notify
 
-        # notify creator, recipients and superusers about failed export
-        for user in notify_users:
-            notify(None, user, 'EXPORT_FAILED', object=export, target=export.content_type, details=details)
+            notify_users = get_user_model().objects \
+                .active()\
+                .filter(
+                    Q(is_superuser=True) |
+                    Q(pk=export.creator.pk) |
+                    Q(pk__in=export.recipients.all())
+                ).distinct()
 
-        raise
+            # notify creator, recipients and superusers about failed export
+            for user in notify_users:
+                notify(None, user, 'EXPORT_FAILED', object=export, target=export.content_type, details=details)
+
+            raise
 
     if export.send_separately:
         for recipient in export.recipients_emails:
