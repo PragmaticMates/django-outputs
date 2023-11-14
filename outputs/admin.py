@@ -8,9 +8,19 @@ class ExportAdmin(admin.ModelAdmin):
     date_hierarchy = 'created'
     search_fields = ['creator__first_name', 'creator__last_name']
     list_select_related = ['creator', 'content_type']
-    list_filter = ['format', 'context', 'content_type']
-    list_display = ('id', 'content_type', 'format', 'creator', 'total', 'created')
+    list_filter = ['status', 'format', 'context', 'content_type']
+    list_display = ('id', 'content_type', 'format', 'context', 'status', 'creator', 'total', 'created')
     actions = ['send_mail']
+    autocomplete_fields = ['creator', 'recipients']
+    fields = [
+        'status', 'total', 'url',
+        ('content_type', 'format', 'context'),
+        ('exporter_path', 'fields', 'query_string'),
+        ('creator', 'recipients', 'emails', 'send_separately'),
+        'created', 'modified'
+    ]
+    readonly_fields = ['total', 'created', 'modified']
+    ordering = ('-created',)
 
     def send_mail(self, request, queryset):
         for obj in queryset.all():
