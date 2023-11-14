@@ -406,6 +406,7 @@ class ExcelExporterMixin(ExporterMixin):
         'datetime': {'num_format': 'dd.mm.yyyy hh:mm'},
         'time': {'num_format': 'hh:mm'},
         'integer': {'num_format': '#'},
+        'percent': {'num_format': '0.00%'},
         'money': {'num_format': '### ### ##0.00 €'},
         'bold_money': {'num_format': '### ### ##0.00 €', 'bold': True},
         'money_amount': {'num_format': '### ### ##0.00'},
@@ -580,6 +581,7 @@ class ExcelExporterMixin(ExporterMixin):
             row += 1
 
         worksheet.autofilter(0, 0, row-1, max_col-1)
+        worksheet.freeze_panes(1, 0)
 
     def get_selected_fields(self, objects):
         fields = []
