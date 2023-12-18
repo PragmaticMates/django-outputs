@@ -5,7 +5,6 @@ import operator
 
 from django.contrib import messages
 from django.contrib.contenttypes.models import ContentType
-from django.core.paginator import Paginator
 from django.db.models import Count, QuerySet
 from django.http import HttpResponse
 from django.template import loader
@@ -636,11 +635,7 @@ class ExcelExporterMixin(ExporterMixin):
         self.write_header(worksheet, fields, iterative_sets_fields)
 
         # write content
-        paginator = Paginator(objects, 1000)
-
-        for page_number in paginator.page_range:
-            page = paginator.page(page_number)
-            self.write_content(worksheet, fields, iterative_sets_fields, page.object_list)
+        self.write_content(worksheet, fields, iterative_sets_fields, objects)
 
         # write header and content for fields requiring iteration over multiple related objects if there are any
         # self.write_iterative_sets(worksheet, fields, objects)
