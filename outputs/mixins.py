@@ -1,10 +1,13 @@
+import concurrent.futures
 import datetime
 import io
 import json
+import math
 import operator
 
 from django.contrib import messages
 from django.contrib.contenttypes.models import ContentType
+from django.core.paginator import Paginator
 from django.db.models import Count, QuerySet
 from django.http import HttpResponse
 from django.template import loader
@@ -19,7 +22,7 @@ except ImportError:
     from django.utils.translation import gettext_lazy as _
 
 from pragmatic.templatetags.pragmatic_tags import filtered_values
-from outputs import jobs
+from outputs import jobs, settings
 from outputs.forms import ChooseExportFieldsForm, ConfirmExportForm
 from outputs.models import Export
 
@@ -561,7 +564,34 @@ class ExcelExporterMixin(ExporterMixin):
         # Write actual data. Start from the first cell. Rows and columns are zero indexed.
         row = 1
         max_col = 0
+        paginator = self.get_paginator(objects)
 
+        # If a paginator is defined, process each page in a separate thread
+        if paginator and isinstance(paginator, Paginator):
+            with concurrent.futures.ThreadPoolExecutor(max_workers=settings.NUMBER_OF_THREADS) as executor:
+                futures = {
+                    executor.submit(self.write_objects, worksheet, fields, iterative_sets_fields, paginator.page(page_number).object_list, (page_number - 1) * paginator.per_page + 1,
+                                    max_col): page_number
+                    for page_number in paginator.page_range}
+
+                for future in concurrent.futures.as_completed(futures):
+                    page_number = futures[future]
+
+                    try:
+                        result_row, result_max_col = future.result()
+                        row = max(row, result_row)
+                        max_col = max(max_col, result_max_col)
+
+                    except Exception as exc:
+                        print(f"Page {page_number} generated an exception: {exc}")
+
+        else:
+            row, max_col = self.write_objects(worksheet, fields, iterative_sets_fields, objects, row, max_col)
+
+        worksheet.autofilter(0, 0, row - 1, max_col - 1)
+        worksheet.freeze_panes(1, 0)
+
+    def write_objects(self, worksheet, fields, iterative_sets_fields, objects, row, max_col):
         for obj in objects:
             col = 0
 
@@ -580,8 +610,7 @@ class ExcelExporterMixin(ExporterMixin):
             max_col = max(col, max_col)
             row += 1
 
-        worksheet.autofilter(0, 0, row-1, max_col-1)
-        worksheet.freeze_panes(1, 0)
+        return row, max_col
 
     def get_selected_fields(self, objects):
         fields = []
@@ -639,3 +668,12 @@ class ExcelExporterMixin(ExporterMixin):
 
         # write header and content for fields requiring iteration over multiple related objects if there are any
         # self.write_iterative_sets(worksheet, fields, objects)
+
+    def get_paginator(self, objects):
+        count = objects.count()
+
+        if count > settings.NUMBER_OF_THREADS:
+            per_page = math.ceil(count / settings.NUMBER_OF_THREADS)
+            return Paginator(objects, per_page)
+
+        return None
