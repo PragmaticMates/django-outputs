@@ -22,7 +22,7 @@ except ImportError:
     from django.utils.translation import gettext_lazy as _
 
 from pragmatic.templatetags.pragmatic_tags import filtered_values
-from outputs import jobs, settings
+from outputs import settings
 from outputs.forms import ChooseExportFieldsForm, ConfirmExportForm
 from outputs.models import Export
 
@@ -148,6 +148,7 @@ class ConfirmExportMixin(object):
         return self.exporter_class(**self.exporter_params)
 
     def export(self):
+        from outputs import jobs
         jobs.execute_export.delay(self.exporter_class, self.exporter_params, language=translation.get_language())
 
     def get_objects_count(self):

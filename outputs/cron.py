@@ -1,8 +1,6 @@
 from django.utils.module_loading import import_string
 from django.utils.timezone import now
 
-from outputs import jobs
-
 
 # TODO: review
 def schedule_export(scheduler_id, scheduler_class_name):
@@ -11,6 +9,7 @@ def schedule_export(scheduler_id, scheduler_class_name):
     scheduler = scheduler_class.objects.get(pk=scheduler_id)
 
     # delay export job in background
+    from outputs import jobs
     jobs.execute_export.delay(scheduler.exporter_class, scheduler.exporter_params, language=scheduler.language)
 
     # update list of execution datetimes

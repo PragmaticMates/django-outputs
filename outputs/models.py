@@ -25,7 +25,7 @@ from rq.job import Job
 if 'auditlog' in settings.INSTALLED_APPS:
     from auditlog.models import AuditlogHistoryField
 
-from outputs import jobs, settings as outputs_settings
+from outputs import settings as outputs_settings
 from outputs.cron import schedule_export
 from outputs.querysets import ExportQuerySet, SchedulerQuerySet
 
@@ -277,6 +277,7 @@ class Export(AbstractExport):
         return app_label
 
     def send_mail(self, language, filename=None):
+        from outputs import jobs
         export_class_name = f'{self.__class__.__module__}.{self.__class__.__name__}'
         jobs.mail_export_by_id.delay(self.pk, export_class_name, language, filename)
 
