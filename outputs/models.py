@@ -1,7 +1,6 @@
 import inspect
 
 from cron_descriptor import CasingTypeEnum, ExpressionDescriptor
-from croniter import croniter
 from django.core.exceptions import ValidationError
 from django.utils.timezone import now
 
@@ -375,6 +374,7 @@ class Scheduler(AbstractExport):
 
         if self.routine == self.ROUTINE_CUSTOM:
             try:
+                from croniter import croniter
                 croniter(self.cron_string, now())
             except Exception as e:
                 raise ValidationError(_('Invalid cron string: %s') % str(e))
