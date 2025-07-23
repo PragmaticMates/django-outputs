@@ -1,6 +1,10 @@
-{% load i18n %}
+{% load pragmatic_tags i18n %}
 {% trans 'Total items' %}: {{ count }}
 <br><br>
 {% for param, field_data in filtered_values.items %}
     {{ field_data.label }}: {{ field_data.value }}<br>
 {% endfor %}
+{% if file_url %}
+    <br><br>
+    {% trans 'Download available at following URL:' %} <a href="{% uri file_url %}">{% uri file_url %}</a>
+{% endif %}

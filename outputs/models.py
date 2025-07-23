@@ -250,7 +250,6 @@ class Export(AbstractExport):
                 pass
 
         return None
-        # return NotImplementedError()
 
     def get_items_url(self):
         base_url = self._get_base_url()

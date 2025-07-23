@@ -273,10 +273,10 @@ class FilterExporterMixin(object):
 
         return self.filter.qs
 
-    def get_message_body(self, count):
+    def get_message_body(self, count, file_url=None):
         template = loader.get_template('outputs/export_message_body.html')
         fv = filtered_values(self.filter, self.params)
-        return template.render({'count': count, 'filtered_values': fv})
+        return template.render({'count': count, 'filtered_values': fv, 'file_url': file_url})
 
 
 class ExporterMixin(object):
@@ -340,7 +340,7 @@ class ExporterMixin(object):
 
         return response
 
-    def get_message_body(self, count):
+    def get_message_body(self, count, file_url=None):
         raise NotImplementedError()
 
     def get_message_subject(self):
