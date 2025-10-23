@@ -16,6 +16,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='scheduler',
-            constraint=models.CheckConstraint(check=models.Q(models.Q(('cron_string', ''), models.Q(_negated=True, routine='CUSTOM')), models.Q(models.Q(_negated=True, cron_string=''), ('routine', 'CUSTOM')), _connector='OR'), name='custom_cron_string'),
+            constraint=models.CheckConstraint(condition=models.Q(models.Q(('cron_string', ''), models.Q(_negated=True, routine='CUSTOM')), models.Q(models.Q(_negated=True, cron_string=''), ('routine', 'CUSTOM')), _connector='OR'), name='custom_cron_string'),
         ),
     ]
