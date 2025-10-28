@@ -59,4 +59,4 @@ def notify_about_scheduler(sender, instance, created, **kwargs):
             recipients = recipients.exclude(pk=instance.creator.pk)
 
         for recipient in recipients:
-            notify(None, recipient, 'SCHEDULER_CREATED', actor=instance.creator, object=instance)
+            notify(recipient=recipient, event='SCHEDULER_CREATED', actor=instance.creator, object=instance)

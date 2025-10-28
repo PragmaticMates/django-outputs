@@ -89,7 +89,7 @@ def mail_export(export, language, filename=None, exporter=None):
 
             # notify creator, recipients and superusers about failed export
             for user in notify_users:
-                notify(None, user, 'EXPORT_FAILED', object=export, target=export.content_type, details=details)
+                notify(recipient=user, event='EXPORT_FAILED', object=export, target=export.content_type, details=details)
 
             raise
 
