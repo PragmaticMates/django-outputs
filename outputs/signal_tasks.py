@@ -11,7 +11,7 @@ def notify_about_executed_export(export):
         .exclude(pk__in=export.recipients.all())
 
     for user in notify_users:
-        notify(None, user, 'EXPORT_EXECUTED', actor=export.creator, object=export, target=export.content_type)
+        notify(recipient=user, event='EXPORT_EXECUTED', actor=export.creator, object=export, target=export.content_type)
 
 
 @apm_custom_context('tasks')
