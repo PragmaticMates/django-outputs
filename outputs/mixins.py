@@ -287,9 +287,11 @@ class ExporterMixin(object):
     send_separately = False
     description = ''
     url = ''
+    language = 'en'
 
     def __init__(self, user, recipients, **kwargs):
         self.url = kwargs.pop('url', self.url)
+        self.language = kwargs.pop('language', self.language)
         self.filename = kwargs.pop('filename', self.filename)
         self.send_separately = kwargs.pop('send_separately', self.send_separately)
         self.user = user
@@ -363,18 +365,6 @@ class ExporterMixin(object):
                 # exporter doesn't have selectable fields (for instance export to PDF)
                 # save None instead of empty list
                 pass
-
-        if self.url:
-            # translate url
-            try:
-                url_lang_code = self.url.split('/')[1]
-            except IndexError:
-                pass
-            else:
-                if url_lang_code != 'en':
-                    with translation.override(url_lang_code):
-                        # override language to url language, as translation only works from active language
-                        self.url = translate_url(self.url, 'en')
 
         # track export
         export = Export.objects.create(
@@ -468,6 +458,8 @@ class ExcelExporterMixin(ExporterMixin):
         return field[4]
 
     def write_row(self, worksheet, row, col, obj, field):
+        translation.activate(self.language)
+
         attr_index = None
         attr = self.get_attribute(field)
 

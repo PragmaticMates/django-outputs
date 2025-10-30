@@ -259,6 +259,12 @@ class Export(AbstractExport):
         base_url = self.url if self.url else self._get_base_url()
         return f'{base_url}?{self.query_string}' if base_url is not None else None
 
+    def get_language(self):
+        try:
+            return self.url.split('/')[1]
+        except IndexError:
+            return 'en'
+
     def get_app_label(self):
         if self.context in [self.CONTEXT_LIST, self.CONTEXT_DETAIL]:
             app_label = self.content_type.app_label
@@ -293,22 +299,11 @@ class Export(AbstractExport):
             'items': self.object_list,  # this is required as we want to send identically same export (not currently available filtered data)
             'user': self.creator,
             'recipients': self.recipients.all(),
-            'selected_fields': self.fields
+            'selected_fields': self.fields,
+            'language': self.get_language()
         }
 
     def save(self, *args, **kwargs):
-        if self.url:
-            # translate url
-            try:
-                url_lang_code = self.url.split('/')[1]
-            except IndexError:
-                pass
-            else:
-                if url_lang_code != 'en':
-                    with override(url_lang_code):
-                        # override language to url language, as translation only works from active language
-                        self.url = translate_url(self.url, 'en')
-
         super().save(*args, **kwargs)
 
 
