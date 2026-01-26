@@ -3,12 +3,10 @@ Tests for forms.
 """
 import pytest
 from django.contrib.auth import get_user_model
-from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 
 from outputs.forms import ConfirmExportForm, ChooseExportFieldsForm, SchedulerForm
-from outputs.models import Scheduler, Export
-from outputs.tests.models import SampleModel
+from outputs.models import Scheduler
 
 
 class TestConfirmExportForm:

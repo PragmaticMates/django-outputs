@@ -4,8 +4,7 @@ Tests for usecases module.
 import pytest
 from django.contrib.contenttypes.models import ContentType
 from django.core import mail
-from django.core.files.base import ContentFile
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 from outputs.models import Export, ExportItem
 from outputs.usecases import execute_export, export_items, mail_export, get_message

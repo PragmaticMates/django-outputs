@@ -3,7 +3,6 @@ Tests for cron functions.
 """
 import pytest
 from unittest.mock import Mock, patch
-from django.utils import timezone
 
 from outputs.models import Scheduler
 from outputs.cron import schedule_export

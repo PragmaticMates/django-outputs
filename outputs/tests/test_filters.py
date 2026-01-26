@@ -2,8 +2,6 @@
 Tests for filters.
 """
 import pytest
-from django.contrib.auth import get_user_model
-from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from datetime import timedelta
 

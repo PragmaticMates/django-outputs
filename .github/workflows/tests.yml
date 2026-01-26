@@ -48,6 +48,7 @@ jobs:
           pip install xlsxwriter cron-descriptor pytz fakeredis
           pip install psycopg2-binary
           pip install requests
+          pip install django-gm2m  # Required for historical migrations
 
       - name: Install package
         run: |

@@ -3,7 +3,6 @@ Tests for models.
 """
 import pytest
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ValidationError
 from django.http import QueryDict
 from unittest.mock import Mock, patch
 
@@ -232,6 +231,7 @@ class TestScheduler:
 
     def test_scheduler_cron_string_validation(self, scheduler):
         """Test cron string validation."""
+        from django.core.exceptions import ValidationError
         scheduler.routine = Scheduler.ROUTINE_CUSTOM
         scheduler.cron_string = 'invalid cron'
         with pytest.raises(ValidationError):
@@ -239,6 +239,7 @@ class TestScheduler:
 
     def test_scheduler_clean_custom_routine_requires_cron(self, scheduler):
         """Test that custom routine requires cron string."""
+        from django.core.exceptions import ValidationError
         scheduler.routine = Scheduler.ROUTINE_CUSTOM
         scheduler.cron_string = ''
         with pytest.raises(ValidationError):

@@ -4,8 +4,7 @@ Pytest configuration and fixtures for django-outputs tests.
 import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
-from django.core.files.storage import default_storage
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 import fakeredis
 
 # Patch get_task_decorator if not available in pragmatic version

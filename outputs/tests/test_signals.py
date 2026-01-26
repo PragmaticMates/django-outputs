@@ -2,7 +2,6 @@
 Tests for signals.
 """
 import pytest
-from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from unittest.mock import Mock, patch
 

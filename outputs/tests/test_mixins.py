@@ -2,7 +2,6 @@
 Tests for mixins.
 """
 import pytest
-import json
 from unittest.mock import Mock, patch
 
 from outputs.mixins import (
