@@ -50,8 +50,22 @@ class SQLiteArrayField(models.TextField):
 import django.contrib.postgres.fields
 django.contrib.postgres.fields.ArrayField = SQLiteArrayField
 
+# Patch get_task_decorator if not available in pragmatic version
+# This must happen before jobs.py is imported
+try:
+    from pragmatic.utils import get_task_decorator
+except ImportError:
+    # Create a mock decorator if not available
+    def get_task_decorator(queue_name):
+        def decorator(func):
+            return func
+        return decorator
+    # Patch it in pragmatic.utils
+    import pragmatic.utils
+    pragmatic.utils.get_task_decorator = get_task_decorator
+
 from outputs.models import Export, ExportItem, Scheduler
-from outputs.tests.models import TestModel
+from outputs.tests.models import SampleModel
 
 
 @pytest.fixture
@@ -93,14 +107,14 @@ def superuser(db):
 
 @pytest.fixture
 def content_type(db):
-    """Create a ContentType for TestModel."""
-    return ContentType.objects.get_for_model(TestModel)
+    """Create a ContentType for SampleModel."""
+    return ContentType.objects.get_for_model(SampleModel)
 
 
 @pytest.fixture
 def test_model(db):
     """Create a test model instance."""
-    return TestModel.objects.create(
+    return SampleModel.objects.create(
         name='Test Item',
         email='test@example.com',
         is_active=True
@@ -178,8 +192,8 @@ def exporter_class():
             pass
 
         def get_queryset(self):
-            from outputs.tests.models import TestModel
-            return TestModel.objects.all()
+            from outputs.tests.models import SampleModel
+            return SampleModel.objects.all()
 
         @classmethod
         def get_path(cls):

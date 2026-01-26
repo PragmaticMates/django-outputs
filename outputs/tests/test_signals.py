@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 
 from outputs.models import Export, Scheduler, ExportItem
 from outputs.signals import export_item_changed
-from outputs.tests.models import TestModel
+from outputs.tests.models import SampleModel
 
 
 class TestExportExecutedPostSave:
@@ -124,7 +124,7 @@ class TestUpdateExportItem:
 
     def test_update_export_item_signal(self, export, test_model):
         """Test export item update signal."""
-        content_type = ContentType.objects.get_for_model(TestModel)
+        content_type = ContentType.objects.get_for_model(SampleModel)
         
         # Send signal
         export_item_changed.send(

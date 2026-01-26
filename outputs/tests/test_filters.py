@@ -9,7 +9,7 @@ from datetime import timedelta
 
 from outputs.filters import ExportFilter, SchedulerFilter
 from outputs.models import Export, Scheduler
-from outputs.tests.models import TestModel
+from outputs.tests.models import SampleModel
 
 
 class TestExportFilter:

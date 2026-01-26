@@ -8,7 +8,7 @@ from django.http import QueryDict
 from unittest.mock import Mock, patch
 
 from outputs.models import Export, ExportItem, Scheduler, AbstractExport
-from outputs.tests.models import TestModel
+from outputs.tests.models import SampleModel
 
 
 class TestExport:
@@ -65,7 +65,7 @@ class TestExport:
     def test_export_get_exporter_path(self):
         """Test exporter path generation."""
         path = AbstractExport.get_exporter_path(
-            model_class=TestModel,
+            model_class=SampleModel,
             context=Export.CONTEXT_LIST,
             format=Export.FORMAT_XLSX
         )
@@ -110,7 +110,7 @@ class TestExport:
         from outputs.models import ExportItem
         ExportItem.objects.create(
             export=export,
-            content_type=ContentType.objects.get_for_model(TestModel),
+            content_type=ContentType.objects.get_for_model(SampleModel),
             object_id=test_model.pk
         )
         object_list = export.object_list
@@ -124,7 +124,7 @@ class TestExport:
     def test_export_update_export_items_result(self, export, test_model):
         """Test updating export items result."""
         from outputs.models import ExportItem
-        content_type = ContentType.objects.get_for_model(TestModel)
+        content_type = ContentType.objects.get_for_model(SampleModel)
         ExportItem.objects.create(
             export=export,
             content_type=content_type,
@@ -137,7 +137,7 @@ class TestExport:
     def test_export_update_export_items_result_with_detail(self, export, test_model):
         """Test updating export items result with detail."""
         from outputs.models import ExportItem
-        content_type = ContentType.objects.get_for_model(TestModel)
+        content_type = ContentType.objects.get_for_model(SampleModel)
         ExportItem.objects.create(
             export=export,
             content_type=content_type,
@@ -182,7 +182,7 @@ class TestExportItem:
     def test_export_item_creation(self, export, test_model):
         """Test creation."""
         from outputs.models import ExportItem
-        content_type = ContentType.objects.get_for_model(TestModel)
+        content_type = ContentType.objects.get_for_model(SampleModel)
         item = ExportItem.objects.create(
             export=export,
             content_type=content_type,
@@ -306,26 +306,26 @@ class TestAbstractExport:
     def test_abstract_export_model_class(self, export):
         """Test model_class property."""
         model_class = export.model_class
-        assert model_class == TestModel
+        assert model_class == SampleModel
 
     def test_abstract_export_get_exporter_path(self):
         """Test exporter path generation."""
         path = AbstractExport.get_exporter_path(
-            model_class=TestModel,
+            model_class=SampleModel,
             context=Export.CONTEXT_LIST,
             format=Export.FORMAT_XLSX
         )
         assert isinstance(path, str)
-        assert 'TestModel' in path
+        assert 'SampleModel' in path
         assert 'Exporter' in path
 
     def test_abstract_export_get_exporter_path_with_mapping(self, settings):
         """Test exporter path with module mapping."""
         settings.OUTPUTS_EXPORTERS_MODULE_MAPPING = {
-            'outputs.TestModel': 'custom.exporters'
+            'outputs.SampleModel': 'custom.exporters'
         }
         path = AbstractExport.get_exporter_path(
-            model_class=TestModel,
+            model_class=SampleModel,
             context=Export.CONTEXT_LIST,
             format=Export.FORMAT_XLSX
         )

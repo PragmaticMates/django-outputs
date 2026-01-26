@@ -4,7 +4,7 @@ Test models for django-outputs tests.
 from django.db import models
 
 
-class TestModel(models.Model):
+class SampleModel(models.Model):
     """Simple test model for testing exports."""
     name = models.CharField(max_length=100)
     email = models.EmailField()
@@ -13,8 +13,8 @@ class TestModel(models.Model):
 
     class Meta:
         app_label = 'outputs'
-        verbose_name = 'Test Model'
-        verbose_name_plural = 'Test Models'
+        verbose_name = 'Sample Model'
+        verbose_name_plural = 'Sample Models'
 
     def __str__(self):
         return self.name

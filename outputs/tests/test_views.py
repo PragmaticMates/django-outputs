@@ -12,7 +12,7 @@ from outputs.views import (
     ExportListView, SchedulerListView, SchedulerCreateView,
     SchedulerUpdateView, SchedulerDetailView, SchedulerDeleteView
 )
-from outputs.tests.models import TestModel
+from outputs.tests.models import SampleModel
 
 
 class TestExportListView:

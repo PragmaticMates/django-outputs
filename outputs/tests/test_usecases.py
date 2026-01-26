@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch, MagicMock
 
 from outputs.models import Export, ExportItem
 from outputs.usecases import execute_export, export_items, mail_export, get_message
-from outputs.tests.models import TestModel
+from outputs.tests.models import SampleModel
 
 
 class TestExecuteExport:
@@ -43,7 +43,7 @@ class TestExportItems:
     def test_export_items_success(self, export, test_model, exporter_class, mock_storage, mock_email_backend):
         """Test successful item export."""
         from outputs.models import ExportItem
-        content_type = ContentType.objects.get_for_model(TestModel)
+        content_type = ContentType.objects.get_for_model(SampleModel)
         ExportItem.objects.create(
             export=export,
             content_type=content_type,
@@ -64,7 +64,7 @@ class TestExportItems:
     def test_export_items_failure(self, export, test_model, exporter_class):
         """Test export failure."""
         from outputs.models import ExportItem
-        content_type = ContentType.objects.get_for_model(TestModel)
+        content_type = ContentType.objects.get_for_model(SampleModel)
         ExportItem.objects.create(
             export=export,
             content_type=content_type,
@@ -85,7 +85,7 @@ class TestExportItems:
     def test_export_items_status_updates(self, export, test_model, exporter_class, mock_storage, mock_email_backend):
         """Test status updates during export."""
         from outputs.models import ExportItem
-        content_type = ContentType.objects.get_for_model(TestModel)
+        content_type = ContentType.objects.get_for_model(SampleModel)
         ExportItem.objects.create(
             export=export,
             content_type=content_type,
@@ -108,7 +108,7 @@ class TestExportItems:
     def test_export_items_export_item_updates(self, export, test_model, exporter_class, mock_storage, mock_email_backend):
         """Test ExportItem updates."""
         from outputs.models import ExportItem
-        content_type = ContentType.objects.get_for_model(TestModel)
+        content_type = ContentType.objects.get_for_model(SampleModel)
         item = ExportItem.objects.create(
             export=export,
             content_type=content_type,
@@ -128,7 +128,7 @@ class TestExportItems:
     def test_export_items_transaction(self, export, test_model, exporter_class):
         """Test transaction handling on failure."""
         from outputs.models import ExportItem
-        content_type = ContentType.objects.get_for_model(TestModel)
+        content_type = ContentType.objects.get_for_model(SampleModel)
         ExportItem.objects.create(
             export=export,
             content_type=content_type,
@@ -214,7 +214,7 @@ class TestMailExport:
     def test_mail_export_export_item_status(self, export, test_model, exporter_class, mock_storage, mock_email_backend):
         """Test export item status update."""
         from outputs.models import ExportItem
-        content_type = ContentType.objects.get_for_model(TestModel)
+        content_type = ContentType.objects.get_for_model(SampleModel)
         item = ExportItem.objects.create(
             export=export,
             content_type=content_type,

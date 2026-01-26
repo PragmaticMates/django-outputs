@@ -22,9 +22,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'crispy_forms',
-    'crispy_bootstrap5',
     'django_filters',
     'django_rq',
+    'django_select2',  # Required for filters
     'pragmatic',
     'outputs',
 ]

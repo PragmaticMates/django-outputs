@@ -10,7 +10,7 @@ from outputs.mixins import (
     FilterExporterMixin, ExporterMixin, ExcelExporterMixin
 )
 from outputs.models import Export
-from outputs.tests.models import TestModel
+from outputs.tests.models import SampleModel
 
 
 class TestExportFieldsPermissionsMixin:
@@ -177,18 +177,18 @@ class TestFilterExporterMixin:
 
     def test_filter_exporter_mixin_get_filter(self):
         """Test filter creation."""
-        mixin = FilterExporterMixin(params={}, queryset=TestModel.objects.all())
+        mixin = FilterExporterMixin(params={}, queryset=SampleModel.objects.all())
         mixin.filter_class = Mock()
-        mixin.get_whole_queryset = Mock(return_value=TestModel.objects.all())
+        mixin.get_whole_queryset = Mock(return_value=SampleModel.objects.all())
         
         filter_obj = mixin.get_filter()
         assert filter_obj is not None
 
     def test_filter_exporter_mixin_get_queryset(self):
         """Test queryset filtering."""
-        mixin = FilterExporterMixin(params={}, queryset=TestModel.objects.all())
+        mixin = FilterExporterMixin(params={}, queryset=SampleModel.objects.all())
         mixin.filter = Mock()
-        mixin.filter.qs = TestModel.objects.all()
+        mixin.filter.qs = SampleModel.objects.all()
         mixin.items = None
         
         qs = mixin.get_queryset()
@@ -196,9 +196,9 @@ class TestFilterExporterMixin:
 
     def test_filter_exporter_mixin_get_queryset_with_items(self):
         """Test queryset filtering with items."""
-        mixin = FilterExporterMixin(params={}, queryset=TestModel.objects.all())
+        mixin = FilterExporterMixin(params={}, queryset=SampleModel.objects.all())
         mixin.filter = Mock()
-        mixin.filter.queryset = TestModel.objects.all()
+        mixin.filter.queryset = SampleModel.objects.all()
         mixin.items = [1, 2, 3]
         
         qs = mixin.get_queryset()
@@ -206,7 +206,7 @@ class TestFilterExporterMixin:
 
     def test_filter_exporter_mixin_get_message_body(self):
         """Test message body."""
-        mixin = FilterExporterMixin(params={}, queryset=TestModel.objects.all())
+        mixin = FilterExporterMixin(params={}, queryset=SampleModel.objects.all())
         mixin.filter = Mock()
         
         body = mixin.get_message_body(count=10)
@@ -272,14 +272,14 @@ class TestExporterMixin:
     def test_exporter_mixin_save_export(self, user):
         """Test saving export."""
         exporter = ExporterMixin(user=user, recipients=[user])
-        exporter.queryset = TestModel.objects.all()
+        exporter.queryset = SampleModel.objects.all()
         exporter.export_format = Export.FORMAT_XLSX
         exporter.export_context = Export.CONTEXT_LIST
         exporter.params = {}
         exporter.selected_fields = None
         
         # Create a test model instance
-        test_model = TestModel.objects.create(name='Test', email='test@example.com')
+        test_model = SampleModel.objects.create(name='Test', email='test@example.com')
         
         export = exporter.save_export()
         assert export is not None
@@ -289,15 +289,15 @@ class TestExporterMixin:
     def test_exporter_mixin_save_export_with_items(self, user):
         """Test saving export with items."""
         exporter = ExporterMixin(user=user, recipients=[user])
-        exporter.queryset = TestModel.objects.all()
+        exporter.queryset = SampleModel.objects.all()
         exporter.export_format = Export.FORMAT_XLSX
         exporter.export_context = Export.CONTEXT_LIST
         exporter.params = {}
         exporter.selected_fields = ['name', 'email']
         
         # Create test model instances
-        TestModel.objects.create(name='Test1', email='test1@example.com')
-        TestModel.objects.create(name='Test2', email='test2@example.com')
+        SampleModel.objects.create(name='Test1', email='test1@example.com')
+        SampleModel.objects.create(name='Test2', email='test2@example.com')
         
         export = exporter.save_export()
         assert export is not None
@@ -319,14 +319,14 @@ class TestExcelExporterMixin:
             
             class TestExcelExporter(ExcelExporterMixin):
                 def get_queryset(self):
-                    return TestModel.objects.none()
+                    return SampleModel.objects.none()
                 
                 def get_worksheet_title(self, index=0):
                     return 'Test'
             
             exporter = TestExcelExporter(user=None, recipients=[])
             field = ('name', 'Name', 20)
-            obj = TestModel(name='Test', email='test@example.com')
+            obj = SampleModel(name='Test', email='test@example.com')
             
             exporter.write_row(mock_worksheet, 0, 0, obj, field)
             assert mock_worksheet.write.called
@@ -341,7 +341,7 @@ class TestExcelExporterMixin:
             
             class TestExcelExporter(ExcelExporterMixin):
                 def get_queryset(self):
-                    return TestModel.objects.none()
+                    return SampleModel.objects.none()
                 
                 def get_worksheet_title(self, index=0):
                     return 'Test'
@@ -363,7 +363,7 @@ class TestExcelExporterMixin:
             
             class TestExcelExporter(ExcelExporterMixin):
                 def get_queryset(self):
-                    return TestModel.objects.all()
+                    return SampleModel.objects.all()
                 
                 def get_worksheet_title(self, index=0):
                     return 'Test'
@@ -376,7 +376,7 @@ class TestExcelExporterMixin:
             exporter.selected_fields = ['name']
             
             # Create test objects
-            TestModel.objects.create(name='Test', email='test@example.com')
+            SampleModel.objects.create(name='Test', email='test@example.com')
             
             fields, iterative = exporter.get_selected_fields(exporter.get_queryset())
             assert len(fields) == 1
@@ -390,7 +390,7 @@ class TestExcelExporterMixin:
             
             class TestExcelExporter(ExcelExporterMixin):
                 def get_queryset(self):
-                    return TestModel.objects.all()
+                    return SampleModel.objects.all()
                 
                 def get_worksheet_title(self, index=0):
                     return 'Test'
@@ -399,7 +399,7 @@ class TestExcelExporterMixin:
             
             # Create many test objects
             for i in range(10):
-                TestModel.objects.create(name=f'Test{i}', email=f'test{i}@example.com')
+                SampleModel.objects.create(name=f'Test{i}', email=f'test{i}@example.com')
             
             with patch('outputs.mixins.settings') as mock_settings:
                 mock_settings.NUMBER_OF_THREADS = 4

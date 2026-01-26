@@ -5,7 +5,7 @@ import pytest
 from django.contrib.contenttypes.models import ContentType
 
 from outputs.models import Export, ExportItem, Scheduler
-from outputs.tests.models import TestModel
+from outputs.tests.models import SampleModel
 
 
 class TestExportItemQuerySet:
@@ -13,7 +13,7 @@ class TestExportItemQuerySet:
 
     def test_export_item_queryset_successful(self, export, test_model):
         """Test successful() filter."""
-        content_type = ContentType.objects.get_for_model(TestModel)
+        content_type = ContentType.objects.get_for_model(SampleModel)
         ExportItem.objects.create(
             export=export,
             content_type=content_type,
@@ -32,7 +32,7 @@ class TestExportItemQuerySet:
 
     def test_export_item_queryset_failed(self, export, test_model):
         """Test failed() filter."""
-        content_type = ContentType.objects.get_for_model(TestModel)
+        content_type = ContentType.objects.get_for_model(SampleModel)
         ExportItem.objects.create(
             export=export,
             content_type=content_type,
@@ -51,7 +51,7 @@ class TestExportItemQuerySet:
 
     def test_export_item_queryset_for_object(self, export, test_model):
         """Test for_object() filter."""
-        content_type = ContentType.objects.get_for_model(TestModel)
+        content_type = ContentType.objects.get_for_model(SampleModel)
         item = ExportItem.objects.create(
             export=export,
             content_type=content_type,
@@ -64,7 +64,7 @@ class TestExportItemQuerySet:
 
     def test_export_item_queryset_by_export_id(self, export, test_model):
         """Test by_export_id() filter."""
-        content_type = ContentType.objects.get_for_model(TestModel)
+        content_type = ContentType.objects.get_for_model(SampleModel)
         item = ExportItem.objects.create(
             export=export,
             content_type=content_type,

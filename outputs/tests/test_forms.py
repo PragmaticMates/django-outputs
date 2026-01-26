@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 
 from outputs.forms import ConfirmExportForm, ChooseExportFieldsForm, SchedulerForm
 from outputs.models import Scheduler, Export
-from outputs.tests.models import TestModel
+from outputs.tests.models import SampleModel
 
 
 class TestConfirmExportForm:
