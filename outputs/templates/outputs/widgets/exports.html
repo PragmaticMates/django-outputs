@@ -37,7 +37,7 @@
                         <td>
                             {% if export.format == export.FORMAT_XLSX %}
                                 <span class="badge badge-pill badge-info">{{ export.get_format_display }}</span>
-                            {% elif export.format == export.FORMAT_XML_MRP %}
+                            {% elif export.format == export.FORMAT_XML %}
                                 <span class="badge badge-pill badge-warning">{{ export.get_format_display }}</span>
                             {% elif export.format == export.FORMAT_PDF %}
                                 <span class="badge badge-pill badge-light">{{ export.get_format_display }}</span>
