@@ -2,53 +2,11 @@
 Pytest configuration and fixtures for django-outputs tests.
 """
 import pytest
-import json
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.core.files.storage import default_storage
-from django.db import models
 from unittest.mock import Mock, patch, MagicMock
 import fakeredis
-
-# Patch ArrayField to work with SQLite for testing
-# This allows tests to use SQLite while models use PostgreSQL ArrayField
-class SQLiteArrayField(models.TextField):
-    """ArrayField compatibility for SQLite using JSON storage."""
-    
-    def __init__(self, base_field=None, **kwargs):
-        self.base_field = base_field
-        super().__init__(**kwargs)
-    
-    def from_db_value(self, value, expression, connection):
-        if value is None:
-            return None
-        try:
-            return json.loads(value)
-        except (json.JSONDecodeError, TypeError):
-            return []
-    
-    def to_python(self, value):
-        if isinstance(value, str):
-            try:
-                return json.loads(value)
-            except (json.JSONDecodeError, TypeError):
-                return []
-        return value or []
-    
-    def get_prep_value(self, value):
-        if value is None:
-            return None
-        if isinstance(value, (list, tuple)):
-            return json.dumps(value)
-        return value
-    
-    def get_db_prep_value(self, value, connection, prepared=False):
-        return self.get_prep_value(value)
-
-# Patch ArrayField to use SQLite-compatible version for tests
-# This must happen before models are imported
-import django.contrib.postgres.fields
-django.contrib.postgres.fields.ArrayField = SQLiteArrayField
 
 # Patch get_task_decorator if not available in pragmatic version
 # This must happen before jobs.py is imported

@@ -1,13 +1,15 @@
 import os
 from django.conf import settings
 
-# Use SQLite for testing
-# Note: The models use ArrayField (PostgreSQL-specific), but we disable migrations
-# to avoid database-specific operations during tests
+# Use PostgreSQL for testing (matches production environment)
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': ':memory:',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ.get('POSTGRES_DB', 'test_db'),
+        'USER': os.environ.get('POSTGRES_USER', 'postgres'),
+        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'postgres'),
+        'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
+        'PORT': os.environ.get('POSTGRES_PORT', '5432'),
     }
 }
 
@@ -107,11 +109,9 @@ OUTPUTS_SAVE_AS_FILE = False
 # Email backend for testing
 EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
 
-# Disable migrations for tests to avoid PostgreSQL-specific ArrayField issues
-# This allows tests to run with SQLite without requiring PostgreSQL
-MIGRATION_MODULES = {
-    'outputs': None,
-}
+# Enable migrations for tests to ensure proper schema creation
+# PostgreSQL is now used, so migrations work correctly
+MIGRATION_MODULES = {}
 
 # Default permissions
 DEFAULT_PERMISSIONS = ('add', 'change', 'delete', 'view')
