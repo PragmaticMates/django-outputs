@@ -10,10 +10,8 @@ from django.db import models
 from unittest.mock import Mock, patch, MagicMock
 import fakeredis
 
-# Patch ArrayField to work with SQLite before models are imported
-# This allows tests to run without PostgreSQL
-from django.contrib.postgres.fields import ArrayField as PostgresArrayField
-
+# Patch ArrayField to work with SQLite for testing
+# This allows tests to use SQLite while models use PostgreSQL ArrayField
 class SQLiteArrayField(models.TextField):
     """ArrayField compatibility for SQLite using JSON storage."""
     
@@ -47,7 +45,8 @@ class SQLiteArrayField(models.TextField):
     def get_db_prep_value(self, value, connection, prepared=False):
         return self.get_prep_value(value)
 
-# Patch ArrayField for SQLite compatibility
+# Patch ArrayField to use SQLite-compatible version for tests
+# This must happen before models are imported
 import django.contrib.postgres.fields
 django.contrib.postgres.fields.ArrayField = SQLiteArrayField
 
@@ -241,4 +240,3 @@ def mock_email_backend(settings):
 def enable_db_access_for_all_tests(db):
     """Enable database access for all tests."""
     pass
-

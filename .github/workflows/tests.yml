@@ -30,6 +30,7 @@ jobs:
           pip install pytest pytest-django pytest-cov
           pip install django-rq django-crispy-forms crispy-bootstrap5 django-pragmatic>=4.1.0
           pip install xlsxwriter cron-descriptor pytz fakeredis
+          pip install psycopg2-binary
 
       - name: Install package
         run: |
