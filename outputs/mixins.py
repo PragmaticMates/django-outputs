@@ -23,7 +23,6 @@ except ImportError:
     # Django >= 3
     from django.utils.translation import gettext_lazy as _
 
-from outputs.signals import logger
 from pragmatic.templatetags.pragmatic_tags import filtered_values
 from outputs import settings
 from outputs.forms import ChooseExportFieldsForm, ConfirmExportForm
@@ -287,7 +286,6 @@ class ExporterMixin(object):
     export_format = None
     export_context = None
     send_separately = False
-    export_per_item = False
     output_type = Export.OUTPUT_TYPE_FILE
     description = ''
     url = ''
@@ -299,14 +297,11 @@ class ExporterMixin(object):
         self.filename = kwargs.pop('filename', self.filename)
         self.output_type = kwargs.pop('output_type', self.output_type)
         self.send_separately = kwargs.pop('send_separately', self.send_separately)
-        self.export_per_item = kwargs.pop('export_per_item', self.export_per_item)
         self.user = user
         self.recipients = recipients
 
         # initialize stream
         self.output = io.BytesIO()
-        # initialize list for per-item outputs
-        self.outputs = []
 
     @classmethod
     def get_path(cls):
@@ -335,15 +330,6 @@ class ExporterMixin(object):
     def get_output(self):
         self.output.seek(0)
         return self.output.read()
-
-    def get_outputs_per_item(self):
-        """
-        Get separate output for each item in queryset.
-        
-        Returns list of output bytes, one per item.
-        Only works if export_per_item=True and export() has been called.
-        """
-        return self.outputs
 
     def export_to_response(self):
         self.export()
@@ -401,23 +387,18 @@ class ExporterMixin(object):
         export.recipients.add(*list(self.recipients))
 
         # Create ExportItem entries for each item
-        try:
-            from outputs.models import ExportItem
-            export_items = [
-                ExportItem(
-                    export=export,
-                    content_type=content_type,
-                    object_id=item.pk,
-                    detail=item,
-                    result='',  
-                )
-                for item in items
-            ]
-            ExportItem.objects.bulk_create(export_items, batch_size=1000)
-        except (AttributeError, ImportError) as e:
-            # Log error if logging is available, otherwise fail silently
-            # This allows the export to be created even if ExportItem model is not available
-            logger.warning(f"Warning: Could not create ExportItem entries: {e}")
+        from outputs.models import ExportItem
+        export_items = [
+            ExportItem(
+                export=export,
+                content_type=content_type,
+                object_id=item.pk,
+                detail=str(item),
+                result='',
+            )
+            for item in items
+        ]
+        ExportItem.objects.bulk_create(export_items, batch_size=1000)
 
         return export
 

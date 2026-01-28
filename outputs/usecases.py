@@ -35,7 +35,7 @@ def execute_export(exporter, language):
         raise
 
 
-def export_items(export, language, filename=None, exporter=None):
+def export_items(export, language, filename=None):
     """
     Process export items and generate export file.
     
@@ -60,8 +60,7 @@ def export_items(export, language, filename=None, exporter=None):
         # model = self.queryset.model
         model = export.content_type.model_class()
 
-        # get exporter
-        exporter = exporter or export.exporter
+        exporter = export.exporter
 
         # get queryset via Export items
         object_ids = list(export.export_items.all().values_list("object_id", flat=True))
@@ -71,52 +70,53 @@ def export_items(export, language, filename=None, exporter=None):
         try:
             exporter.export()
         except Exception as e:
-            # update status of export
-            export.status = Export.STATUS_FAILED
-            export.save(update_fields=['status'])
+            notify_about_failed_export(export, str(e))
 
-            # Update all export items to failed status
-            from outputs.models import ExportItem
-            error_detail = str(e)
-            updated_count = export.update_export_items_result(ExportItem.RESULT_FAILURE, detail=error_detail)
-            logger.info(
-                f"Updated {updated_count} ExportItem records to FAILURE for export_id={export.id}"
-            )
+        mail_successful_export(export, filename)
 
-            logger.error(
-                f"Export generation failed: export_id={export.id}, "
-                f"creator={export.creator}, error={error_detail}",
-                exc_info=True
-            )
+def notify_about_failed_export(export, error_detail):
+    # update status of export
+    export.status = Export.STATUS_FAILED
+    export.save(update_fields=['status'])
 
-            # details
-            details = '{}: {}\n'.format(_('Creator'), export.creator)
-            details += '{}: {}\n\n'.format(_('Export ID'), str(export.id))
-            details += '{}: {}\n'.format(_('Error'), error_detail)
+    # Update all export items to failed status
+    from outputs.models import ExportItem
+    updated_count = export.update_export_items_result(ExportItem.RESULT_FAILURE, detail=error_detail)
+    logger.info(
+        f"Updated {updated_count} ExportItem records to FAILURE for export_id={export.id}"
+    )
 
-            if 'whistle' in settings.INSTALLED_APPS:
-                from whistle.helpers import notify
+    logger.error(
+        f"Export generation failed: export_id={export.id}, "
+        f"creator={export.creator}, error={error_detail}",
+        exc_info=True
+    )
 
-                notify_users = get_user_model().objects \
-                    .active() \
-                    .filter(
-                    Q(is_superuser=True) |
-                    Q(pk=export.creator.pk) |
-                    Q(pk__in=export.recipients.all())
-                ).distinct()
+    # details
+    details = '{}: {}\n'.format(_('Creator'), export.creator)
+    details += '{}: {}\n\n'.format(_('Export ID'), str(export.id))
+    details += '{}: {}\n'.format(_('Error'), error_detail)
 
-                # notify creator, recipients and superusers about failed export
-                for user in notify_users:
-                    notify(recipient=user, event='EXPORT_FAILED', object=export, target=export.content_type, details=details)
+    if 'whistle' in settings.INSTALLED_APPS:
+        from whistle.helpers import notify
 
-            raise
+        notify_users = get_user_model().objects \
+            .active() \
+            .filter(
+            Q(is_superuser=True) |
+            Q(pk=export.creator.pk) |
+            Q(pk__in=export.recipients.all())
+        ).distinct()
 
-        mail_export(export, filename, exporter)
+        # notify creator, recipients and superusers about failed export
+        for user in notify_users:
+            notify(recipient=user, event='EXPORT_FAILED', object=export, target=export.content_type, details=details)
+
+    raise
 
 
-def mail_export(export, filename=None, exporter=None):
-    # get exporter
-    exporter = exporter or export.exporter
+def mail_successful_export(export, filename=None):
+    exporter = export.exporter
 
     if outputs_settings.SAVE_AS_FILE:
         # Save the export using Django's default storage

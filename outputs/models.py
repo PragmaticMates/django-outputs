@@ -13,7 +13,7 @@ from django.db import models
 from django.http import QueryDict
 from django.template import Context, Template
 from django.template.defaultfilters import title
-from django.urls import reverse, NoReverseMatch, resolve, Resolver404, translate_url
+from django.urls import reverse, NoReverseMatch, resolve, Resolver404
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _, get_language, override
 from pytz import timezone
