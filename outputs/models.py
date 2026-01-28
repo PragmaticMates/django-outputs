@@ -30,6 +30,22 @@ from outputs.querysets import ExportQuerySet, SchedulerQuerySet, ExportItemQuery
 from pragmatic.templatetags.pragmatic_tags import filtered_values
 
 
+def get_check_constraint_kwargs(condition):
+    """
+    Return kwargs for CheckConstraint compatible across Django versions.
+
+    Newer Django versions use `condition=` instead of `check=`.
+    We introspect the signature so this stays correct without
+    hard-coding version numbers.
+    """
+    from django.db.models import CheckConstraint as _CheckConstraint
+
+    params = inspect.signature(_CheckConstraint.__init__).parameters
+    if 'condition' in params:
+        return {'condition': condition}
+    return {'check': condition}
+
+
 exporters_module_mapping = outputs_settings.EXPORTERS_MODULE_MAPPING
 
 
@@ -440,11 +456,14 @@ class Scheduler(AbstractExport):
 
         constraints = [
             # constraint of empty cront string for custom routine
-            models.CheckConstraint(check=
-                                   # models.Q(cron_string='') ^ ~models.Q(routine='CUSTOM'),  # Added in Django 4.1 (https://docs.djangoproject.com/en/4.1/releases/4.1/#models)
-                                   models.Q(models.Q(cron_string='') & ~models.Q(routine='CUSTOM')) |
-                                   models.Q(~models.Q(cron_string='') & models.Q(routine='CUSTOM')),
-                                   name='custom_cron_string')
+            models.CheckConstraint(
+                **get_check_constraint_kwargs(
+                    # models.Q(cron_string='') ^ ~models.Q(routine='CUSTOM'),  # Added in Django 4.1 (https://docs.djangoproject.com/en/4.1/releases/4.1/#models)
+                    models.Q(models.Q(cron_string='') & ~models.Q(routine='CUSTOM')) |
+                    models.Q(~models.Q(cron_string='') & models.Q(routine='CUSTOM'))
+                ),
+                name='custom_cron_string',
+            )
         ]
 
     def __str__(self):

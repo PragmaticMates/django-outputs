@@ -1,9 +1,4 @@
 import os
-# Disable GDAL for tests (django-select2 or django.contrib.gis may try to import it)
-# Set this before any Django imports
-os.environ.setdefault('GDAL_LIBRARY_PATH', '')
-
-from django.conf import settings
 
 # Use PostgreSQL for testing (matches production environment)
 DATABASES = {
@@ -34,11 +29,6 @@ INSTALLED_APPS = [
     'pragmatic',
     'outputs',
 ]
-
-# Disable GDAL for tests (django-select2 or django.contrib.gis may try to import it)
-# Set this before any Django imports
-import os
-os.environ['GDAL_LIBRARY_PATH'] = ''
 
 # Middleware
 MIDDLEWARE = [

@@ -1,29 +1,26 @@
 """
 Pytest configuration and fixtures for django-outputs tests.
 """
-import os
 import sys
-# Disable GDAL for tests (django-select2 or django.contrib.gis may try to import it)
-# Set this before any Django imports
-os.environ.setdefault('GDAL_LIBRARY_PATH', '/fake/path')
-
-# Provide a stub whistle.helpers.notify for signal imports
 import types
-if 'whistle' not in sys.modules:
-    sys.modules['whistle'] = types.ModuleType('whistle')
-if 'whistle.helpers' not in sys.modules:
+
+whistle_module = sys.modules.get('whistle')
+if whistle_module is None:
+    whistle_module = types.ModuleType('whistle')
+    sys.modules['whistle'] = whistle_module
+
+helpers_module = sys.modules.get('whistle.helpers')
+if helpers_module is None:
     helpers_module = types.ModuleType('whistle.helpers')
+
     def _noop_notify(**kwargs):
         return None
+
     helpers_module.notify = _noop_notify
     sys.modules['whistle.helpers'] = helpers_module
 
-# Mock GDAL before Django tries to import it
-if 'django.contrib.gis.gdal' not in sys.modules:
-    from unittest.mock import MagicMock
-    gdal_mock = MagicMock()
-    sys.modules['django.contrib.gis.gdal'] = gdal_mock
-    sys.modules['django.contrib.gis'] = MagicMock(gdal=gdal_mock)
+# Ensure `whistle.helpers` is accessible as an attribute as well
+setattr(whistle_module, 'helpers', helpers_module)
 
 import pytest
 from django.contrib.auth import get_user_model
