@@ -2,7 +2,7 @@
 Tests for jobs.
 """
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from outputs.models import Export
 from outputs.jobs import mail_export_by_id

@@ -18,4 +18,13 @@ class SampleModel(models.Model):
 
     def __str__(self):
         return self.name
+    
+    def get_absolute_url(self):
+        """Return absolute URL for this model instance."""
+        from django.urls import reverse
+        try:
+            return reverse('outputs:samplemodel-detail', kwargs={'pk': self.pk})
+        except:
+            # If URL doesn't exist, return a simple path
+            return f'/samplemodel/{self.pk}/'
 

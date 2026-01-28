@@ -1,10 +1,9 @@
 """
 Tests for custom querysets.
 """
-import pytest
 from django.contrib.contenttypes.models import ContentType
 
-from outputs.models import Export, ExportItem, Scheduler
+from outputs.models import ExportItem, Scheduler
 from outputs.tests.models import SampleModel
 
 

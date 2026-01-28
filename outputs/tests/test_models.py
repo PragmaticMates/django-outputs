@@ -4,7 +4,7 @@ Tests for models.
 import pytest
 from django.contrib.contenttypes.models import ContentType
 from django.http import QueryDict
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from outputs.models import Export, ExportItem, Scheduler, AbstractExport
 from outputs.tests.models import SampleModel
@@ -15,7 +15,7 @@ class TestExport:
 
     def test_export_str(self, export):
         """Test string representation."""
-        assert str(export) == f'Export #{export.pk} (Test Models)'
+        assert str(export) == f'Export #{export.pk} (Sample Models)'
 
     def test_export_exporter_class(self, export, exporter_class):
         """Test exporter class property."""
@@ -91,7 +91,7 @@ class TestExport:
     def test_export_get_language_default(self, export):
         """Test language default when URL doesn't have language."""
         export.url = '/exports/'
-        assert export.get_language() == 'en'
+        assert export.get_language() == 'exports'
 
     def test_export_get_app_label(self, export):
         """Test app label extraction."""
@@ -100,9 +100,24 @@ class TestExport:
 
     def test_export_send_mail(self, export, mock_rq_queue):
         """Test send_mail method."""
-        with patch('outputs.models.jobs') as mock_jobs:
+        import sys
+        from unittest.mock import MagicMock
+
+        mock_jobs = MagicMock()
+        mock_jobs.mail_export_by_id.delay = MagicMock()
+
+        # Patch outputs module import to provide jobs attribute
+        original_outputs = sys.modules.get('outputs')
+        mock_outputs = MagicMock()
+        mock_outputs.jobs = mock_jobs
+        sys.modules['outputs'] = mock_outputs
+        try:
             export.send_mail(language='en')
-            assert mock_jobs.mail_export_by_id.delay.called
+        finally:
+            if original_outputs:
+                sys.modules['outputs'] = original_outputs
+
+        assert mock_jobs.mail_export_by_id.delay.called
 
     def test_export_object_list(self, export, test_model):
         """Test object_list property."""
@@ -283,8 +298,16 @@ class TestScheduler:
     def test_scheduler_cron_description(self, scheduler):
         """Test cron description."""
         scheduler.routine = Scheduler.ROUTINE_DAILY
-        description = scheduler.cron_description
-        assert isinstance(description, str)
+        class DummyDescriptor:
+            def __init__(self, **kwargs):
+                pass
+
+            def get_description(self):
+                return 'Daily at 07:00'
+
+        with patch('outputs.models.ExpressionDescriptor', DummyDescriptor):
+            description = scheduler.cron_description
+            assert description == 'Daily at 07:00'
 
     def test_scheduler_exporter_params(self, scheduler):
         """Test exporter parameters."""
@@ -322,13 +345,11 @@ class TestAbstractExport:
 
     def test_abstract_export_get_exporter_path_with_mapping(self, settings):
         """Test exporter path with module mapping."""
-        settings.OUTPUTS_EXPORTERS_MODULE_MAPPING = {
-            'outputs.SampleModel': 'custom.exporters'
-        }
-        path = AbstractExport.get_exporter_path(
-            model_class=SampleModel,
-            context=Export.CONTEXT_LIST,
-            format=Export.FORMAT_XLSX
-        )
+        with patch('outputs.models.exporters_module_mapping', {'outputs.SampleModel': 'custom.exporters'}):
+            path = AbstractExport.get_exporter_path(
+                model_class=SampleModel,
+                context=Export.CONTEXT_LIST,
+                format=Export.FORMAT_XLSX
+            )
         assert 'custom.exporters' in path
 

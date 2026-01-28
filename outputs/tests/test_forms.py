@@ -1,9 +1,7 @@
 """
 Tests for forms.
 """
-import pytest
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
 
 from outputs.forms import ConfirmExportForm, ChooseExportFieldsForm, SchedulerForm
 from outputs.models import Scheduler
@@ -146,9 +144,8 @@ class TestSchedulerForm:
             'recipients': [user.pk],
         })
         # Should fail validation
-        scheduler = form.save(commit=False)
-        with pytest.raises(ValidationError):
-            scheduler.clean()
+        assert not form.is_valid()
+        assert '__all__' in form.errors
 
     def test_scheduler_form_fields(self):
         """Test form fields."""

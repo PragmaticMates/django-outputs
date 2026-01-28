@@ -1,4 +1,8 @@
 import os
+# Disable GDAL for tests (django-select2 or django.contrib.gis may try to import it)
+# Set this before any Django imports
+os.environ.setdefault('GDAL_LIBRARY_PATH', '')
+
 from django.conf import settings
 
 # Use PostgreSQL for testing (matches production environment)
@@ -31,10 +35,16 @@ INSTALLED_APPS = [
     'outputs',
 ]
 
+# Disable GDAL for tests (django-select2 or django.contrib.gis may try to import it)
+# Set this before any Django imports
+import os
+os.environ['GDAL_LIBRARY_PATH'] = ''
+
 # Middleware
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -119,4 +129,7 @@ DEFAULT_PERMISSIONS = ('add', 'change', 'delete', 'view')
 # Crispy forms
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
+
+# URL configuration
+ROOT_URLCONF = 'outputs.tests.urls'
 
