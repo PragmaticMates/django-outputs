@@ -8,7 +8,6 @@ from django.core.mail import EmailMultiAlternatives
 from django.db.models import Q
 from django.utils import translation
 
-from outputs.models import Export
 from outputs import settings as outputs_settings
 
 try:
@@ -76,6 +75,7 @@ def export_items(export, language, filename=None):
 
 def notify_about_failed_export(export, error_detail):
     # update status of export
+    from outputs.models import Export
     export.status = Export.STATUS_FAILED
     export.save(update_fields=['status'])
 
@@ -183,6 +183,7 @@ def mail_successful_export(export, filename=None):
     )
 
     # update status of export
+    from outputs.models import Export
     export.status = Export.STATUS_FINISHED
     export.save(update_fields=['status'])
 
