@@ -17,6 +17,9 @@ setup(
         'outputs',
         'outputs.migrations'
     ],
+    package_data={
+        'outputs': ['templates/**/*.html'],
+    },
     include_package_data=True,
     install_requires=('django', 'django-rq', 'django-crispy-forms', 'django-pragmatic', 'cron-descriptor'),
     classifiers=[
