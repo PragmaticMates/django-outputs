@@ -270,28 +270,27 @@ class TestMailExport:
         assert len(mail.outbox[0].attachments) > 0
 
     def test_mail_export_export_item_status(self, export, test_model, exporter_class, mock_storage, mock_email_backend):
-        """Test export item status update."""
+        """Test that mail_successful_export sends email; ExportItem result is set by export_items(), not here."""
         from outputs.models import ExportItem
         content_type = ContentType.objects.get_for_model(SampleModel)
-        item = ExportItem.objects.create(
+        ExportItem.objects.create(
             export=export,
             content_type=content_type,
             object_id=test_model.pk
         )
-        
+        export.total = 1  # so attachment is included
+
         exporter = exporter_class(user=export.creator, recipients=export.recipients.all())
         exporter.get_filename = Mock(return_value='test.xlsx')
         exporter.get_output = Mock(return_value=b'test content')
         exporter.get_message_body = Mock(return_value='Test body')
-        
-        # Mock export.exporter property to return our exporter
+
         with patch.object(type(export), 'exporter', new_callable=lambda: property(lambda self: exporter)):
             mail_successful_export(export, filename='test.xlsx')
-        
-        item.refresh_from_db()
-        assert item.result == ExportItem.RESULT_SUCCESS
-        export.refresh_from_db()
-        assert export.status == Export.STATUS_FINISHED
+
+        assert len(mail.outbox) == 1
+        # ExportItem result is updated by export_items(), not by mail_successful_export
+        assert ExportItem.objects.filter(export=export).count() == 1
 
 
 class TestGetMessage:

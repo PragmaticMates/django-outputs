@@ -29,8 +29,9 @@ class Migration(migrations.Migration):
                 ('result', models.CharField(choices=[('SUCCESS', 'success'), ('FAILURE', 'failure')], max_length=7, blank=True, verbose_name='result')),
                 ('detail', models.TextField(blank=True, default='')),
                 ('created', models.DateTimeField(auto_now_add=True, verbose_name='created')),
+                ('modified', models.DateTimeField(auto_now=True, verbose_name='modified')),
                 ('content_type', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='contenttypes.contenttype', verbose_name='content type')),
-                ('export', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='outputs.export', verbose_name='export')),
+                ('export', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='items', related_query_name='item', to='outputs.export', verbose_name='export')),
             ],
             options={
                 'verbose_name': 'export item',

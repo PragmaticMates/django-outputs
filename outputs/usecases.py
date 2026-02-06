@@ -42,7 +42,7 @@ def export_items(export, language, filename=None):
     Updates ExportItem status based on export success/failure.
     """
     from django.db import transaction
-    from outputs.models import Export
+    from outputs.models import Export, ExportItem
 
     logger.info(
         f"Processing export items: export_id={export.id}, "
@@ -56,36 +56,30 @@ def export_items(export, language, filename=None):
         # set language
         translation.activate(language)
 
-        # model = self.queryset.model
-        model = export.content_type.model_class()
-
         exporter = export.exporter
 
         # get queryset via Export items
-        object_ids = list(export.export_items.all().values_list("object_id", flat=True))
-        exporter.queryset = model.objects.filter(id__in=object_ids)
-
-        # export data to stream
+        exporter.items = export.object_list
         try:
             exporter.export()
+            export.status = Export.STATUS_FINISHED
+            export.save(update_fields=['status'])
+            updated_count = export.update_export_items_result(ExportItem.RESULT_SUCCESS)
+            logger.info(
+                f"Updated {updated_count} ExportItem records to SUCCESS for export_id={export.id}"
+            )
+            mail_successful_export(export, filename, exporter.get_output())     
         except Exception as e:
-            notify_about_failed_export(export, str(e))
-
-        mail_successful_export(export, filename)
+            export.status = Export.STATUS_FAILED
+            export.save(update_fields=['status'])
+            updated_count = export.update_export_items_result(ExportItem.RESULT_FAILURE, detail=str(e))
+            logger.info(
+                f"Updated {updated_count} ExportItem records to FAILURE for export_id={export.id}"
+            )          
+            notify_about_failed_export(export, str(e))               
+           
 
 def notify_about_failed_export(export, error_detail):
-    # update status of export
-    from outputs.models import Export
-    export.status = Export.STATUS_FAILED
-    export.save(update_fields=['status'])
-
-    # Update all export items to failed status
-    from outputs.models import ExportItem
-    updated_count = export.update_export_items_result(ExportItem.RESULT_FAILURE, detail=error_detail)
-    logger.info(
-        f"Updated {updated_count} ExportItem records to FAILURE for export_id={export.id}"
-    )
-
     logger.error(
         f"Export generation failed: export_id={export.id}, "
         f"creator={export.creator}, error={error_detail}",
@@ -115,7 +109,7 @@ def notify_about_failed_export(export, error_detail):
     raise
 
 
-def mail_successful_export(export, filename=None):
+def mail_successful_export(export, filename=None, output_file=None):
     exporter = export.exporter
 
     if outputs_settings.SAVE_AS_FILE:
@@ -124,7 +118,7 @@ def mail_successful_export(export, filename=None):
         file_path = f'exports/{output_filename}'
 
         # Save the file using default storage
-        file_content = ContentFile(exporter.get_output())
+        file_content = ContentFile(output_file or exporter.get_output())
         saved_path = default_storage.save(file_path, file_content)
         logger.info(f"Export file saved: export_id={export.id}, saved_path={saved_path}")
 
@@ -152,6 +146,7 @@ def mail_successful_export(export, filename=None):
                 count=num_items,
                 recipient_list=[recipient],
                 subject='{}: {}'.format(_('Export'), verbose_name),
+                output_file=output_file,
                 filename=filename,
                 file_url=file_url
             )
@@ -169,28 +164,17 @@ def mail_successful_export(export, filename=None):
             count=num_items,
             recipient_list=export.recipients_emails,
             subject='{}: {}'.format(_('Export'), verbose_name),
+            output_file=output_file,
             filename=filename,
             file_url=file_url
         )
         # send
         message.send(fail_silently=False)
 
-    # Update all export items to success status
-    from outputs.models import ExportItem
-    updated_count = export.update_export_items_result(ExportItem.RESULT_SUCCESS)
-    logger.info(
-        f"Updated {updated_count} ExportItem records to SUCCESS for export_id={export.id}"
-    )
-
-    # update status of export
-    from outputs.models import Export
-    export.status = Export.STATUS_FINISHED
-    export.save(update_fields=['status'])
-
     logger.info(f"Export completed: export_id={export.id}, recipients={len(export.recipients_emails)}")
 
 
-def get_message(exporter, count, recipient_list, subject, filename=None, file_url=None):
+def get_message(exporter, count, recipient_list, subject, output_file=None, filename=None, file_url=None):
     # message body
     body = exporter.get_message_body(count, file_url)
 
@@ -205,7 +189,7 @@ def get_message(exporter, count, recipient_list, subject, filename=None, file_ur
         # get the stream and set the correct mimetype
         message.attach(
             filename or exporter.get_filename(),
-            exporter.get_output(),
+            output_file or exporter.get_output(),
             exporter.content_type
         )
 

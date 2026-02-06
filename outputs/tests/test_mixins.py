@@ -286,12 +286,42 @@ class TestExporterMixin:
         assert 'TestExporter' in path
 
     def test_exporter_mixin_get_description(self):
-        """Test description."""
+        """Test description when explicitly set."""
         class TestExporter(ExporterMixin):
             description = 'Test description'
         
         desc = TestExporter.get_description()
         assert desc == 'Test description'
+
+    def test_exporter_mixin_get_description_generic(self):
+        """Test generic description generation when description is not set."""
+        class TestExporter(ExporterMixin):
+            queryset = SampleModel.objects.all()
+            export_format = Export.FORMAT_XLSX
+            export_context = Export.CONTEXT_LIST
+        
+        desc = TestExporter.get_description()
+        # Should generate a generic label: TestExporter (SampleModel, XLSX, LIST)
+        assert desc.startswith('TestExporter (')
+        assert 'SampleModel' in desc
+        assert Export.FORMAT_XLSX in desc
+        assert Export.CONTEXT_LIST in desc
+        assert desc.endswith(')')
+
+    def test_exporter_mixin_get_description_generic_no_model(self):
+        """Test generic description when model cannot be determined."""
+        class TestExporter(ExporterMixin):
+            export_format = Export.FORMAT_XLSX
+            export_context = Export.CONTEXT_LIST
+            # No queryset or model attribute
+        
+        desc = TestExporter.get_description()
+        # Should generate: TestExporter (UnknownModel, XLSX, LIST)
+        assert desc.startswith('TestExporter (')
+        assert 'UnknownModel' in desc
+        assert Export.FORMAT_XLSX in desc
+        assert Export.CONTEXT_LIST in desc
+        assert desc.endswith(')')
 
     def test_exporter_mixin_get_filename(self):
         """Test filename."""
@@ -358,7 +388,7 @@ class TestExporterMixin:
         assert export.creator == user
         assert export.total == 1
         # Check that ExportItem was created
-        assert export.export_items.count() == 1
+        assert export.items.count() == 1
         # Check that emails field is set
         assert user.email in export.emails
 
@@ -391,7 +421,7 @@ class TestExporterMixin:
         assert export is not None
         assert export.total == 2
         # Check that ExportItems were created
-        assert export.export_items.count() == 2
+        assert export.items.count() == 2
         # Check that fields are saved
         assert export.fields == ['name', 'email']
 

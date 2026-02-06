@@ -11,10 +11,10 @@ def update_xml_mrp_to_xml(apps, schema_editor):
     Scheduler = apps.get_model('outputs', 'Scheduler')
     
     # Update Export records
-    Export.objects.filter(format='XML MRP').update(format='XML')
+    Export.objects.filter(format='XML_MRP').update(format='XML')
     
     # Update Scheduler records
-    Scheduler.objects.filter(format='XML MRP').update(format='XML')
+    Scheduler.objects.filter(format='XML_MRP').update(format='XML')
 
 
 def reverse_update_xml_mrp_to_xml(apps, schema_editor):
@@ -25,10 +25,10 @@ def reverse_update_xml_mrp_to_xml(apps, schema_editor):
     Export = apps.get_model('outputs', 'Export')
     Scheduler = apps.get_model('outputs', 'Scheduler')
     
-    # Reverse: change XML back to XML MRP
-    # Note: This assumes all XML records should be XML MRP, which may not be accurate
-    Export.objects.filter(format='XML').update(format='XML MRP')
-    Scheduler.objects.filter(format='XML').update(format='XML MRP')
+    # Reverse: change XML back to XML_MRP
+    # Note: This assumes all XML records should be XML_MRP, which may not be accurate
+    Export.objects.filter(format='XML').update(format='XML_MRP')
+    Scheduler.objects.filter(format='XML').update(format='XML_MRP')
 
 
 class Migration(migrations.Migration):

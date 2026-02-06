@@ -28,7 +28,7 @@ def migrate_items_to_exportitem(apps, schema_editor):
 
         # Use INSERT ... SELECT for efficient bulk data transfer
         # This directly copies data from the GM2M through table to ExportItem
-        # The created timestamp comes from the related Export's created timestamp
+        # created/modified come from the related Export's created (modified has no DB default)
         # Filter to only numeric PKs to avoid casting errors
         cursor.execute("""
             INSERT INTO outputs_exportitem (
@@ -37,7 +37,8 @@ def migrate_items_to_exportitem(apps, schema_editor):
                 object_id,
                 result,
                 detail,
-                created
+                created,
+                modified
             )
             SELECT DISTINCT
                 ei.gm2m_src_id,
@@ -45,6 +46,7 @@ def migrate_items_to_exportitem(apps, schema_editor):
                 ei.gm2m_pk::integer,
                 'SUCCESS',
                 '',
+                e.created,
                 e.created
             FROM outputs_export_items ei
             INNER JOIN outputs_export e ON ei.gm2m_src_id = e.id

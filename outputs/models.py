@@ -88,45 +88,14 @@ class AbstractExport(models.Model):
     def model_class(self):
         return self.content_type.model_class()
 
-    @staticmethod
-    def get_exporter_path(model_class, context, format):
-        """
-        Returns generic exporter path based on content object model, export context and format.
-        """
-        exports_module = exporters_module_mapping.get(model_class._meta.label, None)
-
-        if isinstance(exports_module, dict):
-            exports_module = exports_module.get(context, None)
-
-        if not exports_module:
-            models_module = model_class.__module__
-            app_module = models_module.rsplit('.', maxsplit=1)[0]
-            exports_module = f'{app_module}.exporters'
-
-        exporter_class_name = model_class.__name__
-        format = title(format)
-        format = format.replace('_', '')
-        context = title(context)
-        exporter_class_name = '{}{}{}Exporter'.format(exporter_class_name, format, context)
-        exporter_path = f'{exports_module}.{exporter_class_name}'
-        return exporter_path
-
     @property
     def exporter_class(self):
         try:
-            if self.exporter_path:
-                return import_string(self.exporter_path)
-            else:
-                raise ModuleNotFoundError()
-        except ModuleNotFoundError:
-            # TODO: log
-            exporter_path = AbstractExport.get_exporter_path(
-                model_class=self.model_class,
-                context=self.context,
-                format=self.format
-            )
-            print('ERROR: Exporter path %s not found. Using fallback (predicted path) instead: %s' % (self.exporter_path, exporter_path))
-            return import_string(exporter_path)
+            return import_string(self.exporter_path)
+        except (ModuleNotFoundError, ImportError) as e:
+            raise ImportError(
+                f"Exporter path '{self.exporter_path}' could not be imported: {e}"
+            ) from e
 
     @property
     def exporter(self):
@@ -330,11 +299,11 @@ class Export(AbstractExport):
             return []
         
         # Early return if no export items exist
-        if not self.export_items.exists():
+        if not self.items.exists():
             return model_class.objects.none()
         
         # Get object IDs from ExportItem records and return actual model instances
-        object_ids = self.export_items.values_list('object_id', flat=True)
+        object_ids = self.items.values_list('object_id', flat=True)
         return model_class.objects.filter(pk__in=object_ids)
 
     @property
@@ -365,14 +334,14 @@ class Export(AbstractExport):
         if detail:
             update_kwargs['detail'] = detail
         
-        updated_count = self.export_items.update(**update_kwargs)
+        updated_count = self.items.update(**update_kwargs)
         
         if updated_count == 0:
             import logging
             logger = logging.getLogger(__name__)
             logger.warning(
                 f"update_export_items_result for export {self.id} updated 0 rows. "
-                f"Expected to update {self.export_items.count()} rows."
+                f"Expected to update {self.items.count()} rows."
             )
         
         return updated_count
@@ -389,12 +358,19 @@ class ExportItem(models.Model):
         (RESULT_FAILURE, _('failure')),
     ]
 
-    export = models.ForeignKey(Export, verbose_name=_('export'), on_delete=models.CASCADE, related_name='export_items')
+    export = models.ForeignKey(
+        Export,
+        verbose_name=_('export'),
+        on_delete=models.CASCADE,
+        related_name='items',
+        related_query_name='item',
+    )
     content_type = models.ForeignKey(ContentType, verbose_name=_('content type'), on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     result = models.CharField(_('result'), choices=RESULTS, max_length=7, blank=True)
     detail = models.TextField(_('detail'), blank=True, default='')
     created = models.DateTimeField(_('created'), auto_now_add=True)
+    modified = models.DateTimeField(_('modified'), auto_now=True)
     objects = ExportItemQuerySet.as_manager()
 
     class Meta:
@@ -410,7 +386,7 @@ class ExportItem(models.Model):
 
     def __str__(self):
         model = self.content_type.model_class()
-        name = model._meta.verbose_name_plural if model else self.content_type.model
+        name = model._meta.verbose_name if model else self.content_type.model
         return '{} #{} {} ({})'.format(_('Export item'), self.pk, name, self.result)
 
 

@@ -309,7 +309,30 @@ class ExporterMixin(object):
 
     @classmethod
     def get_description(cls):
-        return cls.description
+        """
+        Return a human-friendly description for this exporter class.
+
+        - If `description` is set on the subclass, use that.
+        - Otherwise, build a generic label similar to `__repr__`, based only on
+          class-level attributes (no instantiation required).
+        """
+        if cls.description:
+            return cls.description
+
+        # Try to determine the model from queryset or explicit model attribute
+        model = None
+        queryset = getattr(cls, 'queryset', None)
+        if queryset is not None:
+            try:
+                model = queryset.model
+            except Exception:
+                model = None
+
+        if model is None:
+            model = getattr(cls, 'model', None)
+
+        model_name = getattr(model, '__name__', 'UnknownModel')
+        return f'{cls.__name__} ({model_name}, {cls.export_format}, {cls.export_context})'
 
     def get_filename(self):
         if not self.filename:

@@ -2,6 +2,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.forms import BooleanField, CheckboxInput, TextInput, Textarea
+from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
 
 from crispy_forms.bootstrap import FormActions
@@ -9,7 +10,8 @@ from crispy_forms.layout import Layout, Row, Div, Fieldset, Submit
 
 from pragmatic.forms import SingleSubmitFormHelper
 
-from outputs.models import Scheduler, AbstractExport
+from outputs.admin import get_exporter_path_choices
+from outputs.models import Scheduler
 from outputs.widgets import CheckboxSelectMultipleWithDisabled, Legend
 
 
@@ -135,7 +137,7 @@ class SchedulerForm(forms.ModelForm):
         # widget=UsersWidget(),  # TODO: out of app context
         required=True,
     )
-
+    exporter_path = forms.ChoiceField(label=_('exporter path'), required=False)
     content_type = forms.ModelChoiceField(label=_('content type'), queryset=ContentType.objects.order_by('model'))  # TODO: show only exportable content types
 
     class Meta:
@@ -153,6 +155,10 @@ class SchedulerForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         self.fields['query_string'].help_text = _('filter')
+
+        # Fill exporter_path choices with all ExporterMixin subclasses (excluding *Mixin classes)
+        exporter_choices = [('', '---------')] + get_exporter_path_choices()
+        self.fields['exporter_path'].choices = exporter_choices
 
         self.helper = SingleSubmitFormHelper()
         self.helper.layout = Layout(
@@ -188,14 +194,57 @@ class SchedulerForm(forms.ModelForm):
         context = self.cleaned_data.get('context', None)
         format = self.cleaned_data.get('format', None)
         content_type = self.cleaned_data.get('content_type', None)
+        exporter_path = self.cleaned_data.get('exporter_path', None)
 
-        if context and format and content_type:
-            model_class = content_type.model_class()
-
+        if exporter_path and context and format and content_type:
             try:
-                # validation of content_type, context and format (check if exporter exists)
-                AbstractExport.get_exporter_path(model_class, context, format)
-            except ImportError:
-                self.add_error(None, _('Exporter for content type {} with given context and format is not available').format(content_type))
+                exporter_cls = import_string(exporter_path)
+            except (ImportError, ValueError) as e:
+                self.add_error(
+                    'exporter_path',
+                    _('Exporter path "{}" could not be imported: {}').format(exporter_path, e),
+                )
+                return self.cleaned_data
+
+            if exporter_cls.export_format != format:
+                self.add_error(
+                    'format',
+                    _('Format "{}" does not match the selected exporter (expected "{}").').format(
+                        format, exporter_cls.export_format
+                    ),
+                )
+            if exporter_cls.export_context != context:
+                self.add_error(
+                    'context',
+                    _('Context "{}" does not match the selected exporter (expected "{}").').format(
+                        context, exporter_cls.export_context
+                    ),
+                )
+
+            if hasattr(exporter_cls, 'queryset') and getattr(exporter_cls, 'queryset', None) is not None:
+                model = exporter_cls.queryset.model
+            elif hasattr(exporter_cls, 'get_queryset'):
+                try:
+                    qs = exporter_cls.get_queryset()
+                    model = getattr(qs, 'model', None)
+                except (TypeError, AttributeError):
+                    model = getattr(exporter_cls, 'model', None)
+            else:
+                model = getattr(exporter_cls, 'model', None)
+
+            if model is None:
+                self.add_error(
+                    'exporter_path',
+                    _('Could not determine the model for the selected exporter. The exporter must define queryset, get_queryset(), or model attribute.'),
+                )
+            else:
+                exporter_content_type = ContentType.objects.get_for_model(model, for_concrete_model=False)
+                if exporter_content_type != content_type:
+                    self.add_error(
+                        'content_type',
+                        _('Content type "{}" does not match the selected exporter content type (expected "{}").').format(
+                            content_type, exporter_content_type
+                        ),
+                    )
 
         return self.cleaned_data

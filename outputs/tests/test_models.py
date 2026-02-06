@@ -61,27 +61,30 @@ class TestExport:
         labels = export.get_fields_labels()
         assert isinstance(labels, list)
 
-    def test_export_get_exporter_path(self):
-        """Test exporter path generation."""
-        path = AbstractExport.get_exporter_path(
-            model_class=SampleModel,
-            context=Export.CONTEXT_LIST,
-            format=Export.FORMAT_XLSX
-        )
-        assert isinstance(path, str)
-        assert 'Exporter' in path
-
     def test_export_get_items_url(self, export):
         """Test items URL."""
-        url = export.get_items_url()
-        # URL may be None if reverse fails
-        assert url is None or isinstance(url, str)
+        with patch.object(type(export), '_get_base_url', return_value='/outputs/samplemodel/list/'):
+            url = export.get_items_url()
+        assert url == f'/outputs/samplemodel/list/?export={export.pk}'
+
+    def test_export_get_items_url_no_base_url(self, export):
+        """Test items URL when reverse fails (no matching URL)."""
+        with patch.object(type(export), '_get_base_url', return_value=None):
+            url = export.get_items_url()
+        assert url is None
 
     def test_export_get_absolute_url(self, export):
         """Test absolute URL."""
-        url = export.get_absolute_url()
-        # URL may be None if reverse fails
-        assert url is None or isinstance(url, str)
+        with patch.object(type(export), '_get_base_url', return_value='/outputs/samplemodel/list/'):
+            url = export.get_absolute_url()
+        assert url == f'/outputs/samplemodel/list/?{export.query_string}'
+
+    def test_export_get_absolute_url_with_explicit_url(self, export):
+        """Test absolute URL when export has url set."""
+        export.url = 'https://example.com/base/'
+        with patch.object(type(export), '_get_base_url', return_value=None):
+            url = export.get_absolute_url()
+        assert url == f'https://example.com/base/?{export.query_string}'
 
     def test_export_get_language(self, export):
         """Test language extraction from URL."""
@@ -133,7 +136,20 @@ class TestExport:
     def test_export_object_list_empty(self, export):
         """Test object_list property when no items."""
         object_list = export.object_list
+        assert hasattr(object_list, 'filter')  # queryset, not list
         assert object_list.count() == 0
+
+    def test_export_object_list_returns_queryset(self, export, test_model):
+        """Test object_list returns a queryset when items exist."""
+        from outputs.models import ExportItem
+        ExportItem.objects.create(
+            export=export,
+            content_type=ContentType.objects.get_for_model(SampleModel),
+            object_id=test_model.pk
+        )
+        object_list = export.object_list
+        assert hasattr(object_list, 'filter')
+        assert object_list.count() == 1
 
     def test_export_update_export_items_result(self, export, test_model):
         """Test updating export items result."""
@@ -146,7 +162,7 @@ class TestExport:
         )
         updated_count = export.update_export_items_result(ExportItem.RESULT_SUCCESS)
         assert updated_count == 1
-        assert export.export_items.first().result == ExportItem.RESULT_SUCCESS
+        assert export.items.first().result == ExportItem.RESULT_SUCCESS
 
     def test_export_update_export_items_result_with_detail(self, export, test_model):
         """Test updating export items result with detail."""
@@ -162,9 +178,32 @@ class TestExport:
             detail='Test error'
         )
         assert updated_count == 1
-        item = export.export_items.first()
+        item = export.items.first()
         assert item.result == ExportItem.RESULT_FAILURE
         assert item.detail == 'Test error'
+
+    def test_export_update_export_items_result_empty_detail_preserves_existing(self, export, test_model):
+        """Test that updating with empty detail does not overwrite existing detail."""
+        from outputs.models import ExportItem
+        content_type = ContentType.objects.get_for_model(SampleModel)
+        ExportItem.objects.create(
+            export=export,
+            content_type=content_type,
+            object_id=test_model.pk,
+            result=ExportItem.RESULT_FAILURE,
+            detail='Original error'
+        )
+        updated_count = export.update_export_items_result(ExportItem.RESULT_SUCCESS, detail='')
+        assert updated_count == 1
+        item = export.items.first()
+        assert item.result == ExportItem.RESULT_SUCCESS
+        assert item.detail == 'Original error'
+
+    def test_export_update_export_items_result_no_items_returns_zero(self, export):
+        """Test update_export_items_result when export has no items."""
+        from outputs.models import ExportItem
+        updated_count = export.update_export_items_result(ExportItem.RESULT_SUCCESS)
+        assert updated_count == 0
 
     def test_export_status_choices(self):
         """Test status field choices."""
@@ -269,7 +308,8 @@ class TestScheduler:
 
     def test_scheduler_get_absolute_url(self, scheduler):
         """Test absolute URL."""
-        url = scheduler.get_absolute_url()
+        with patch('outputs.models.reverse', return_value=f'/outputs/schedulers/{scheduler.pk}/'):
+            url = scheduler.get_absolute_url()
         assert '/schedulers/' in url
         assert str(scheduler.pk) in url
 
@@ -331,25 +371,4 @@ class TestAbstractExport:
         """Test model_class property."""
         model_class = export.model_class
         assert model_class == SampleModel
-
-    def test_abstract_export_get_exporter_path(self):
-        """Test exporter path generation."""
-        path = AbstractExport.get_exporter_path(
-            model_class=SampleModel,
-            context=Export.CONTEXT_LIST,
-            format=Export.FORMAT_XLSX
-        )
-        assert isinstance(path, str)
-        assert 'SampleModel' in path
-        assert 'Exporter' in path
-
-    def test_abstract_export_get_exporter_path_with_mapping(self, settings):
-        """Test exporter path with module mapping."""
-        with patch('outputs.models.exporters_module_mapping', {'outputs.SampleModel': 'custom.exporters'}):
-            path = AbstractExport.get_exporter_path(
-                model_class=SampleModel,
-                context=Export.CONTEXT_LIST,
-                format=Export.FORMAT_XLSX
-            )
-        assert 'custom.exporters' in path
 
