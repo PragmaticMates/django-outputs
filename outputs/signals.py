@@ -68,13 +68,14 @@ def notify_about_scheduler(sender, instance, created, **kwargs):
 
 @receiver(export_item_changed)
 @apm_custom_context('signals')
-def update_export_item(sender, export_id, object_id, result, detail, **kwargs):
+def update_export_item(sender, export_id, content_type, object_id, result, detail, **kwargs):
     """
     Signal handler to update ExportItem status.
     """
     ExportItem.objects.update_or_create(
         export_id=export_id,
         object_id=object_id,
+        content_type=content_type,
         defaults={
             "result": result,
             "detail": detail,

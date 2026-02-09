@@ -155,6 +155,7 @@ class TestUpdateExportItem:
         export_item_changed.send(
             sender=ExportItem,
             export_id=export.pk,
+            content_type=content_type,
             object_id=test_model.pk,
             result=ExportItem.RESULT_SUCCESS,
             detail='Test detail'
@@ -163,6 +164,7 @@ class TestUpdateExportItem:
         # Check that ExportItem was updated
         item = ExportItem.objects.filter(
             export=export,
+            content_type=content_type,
             object_id=test_model.pk
         ).first()
         

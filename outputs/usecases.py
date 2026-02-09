@@ -49,18 +49,19 @@ def export_items(export, language, filename=None):
         f"content_type={export.content_type}, total_items={export.total}"
     )
 
-    with transaction.atomic():
-        export.status = Export.STATUS_PROCESSING
-        export.save(update_fields=['status'])
+    export.status = Export.STATUS_PROCESSING
+    export.save(update_fields=['status'])
 
-        # set language
-        translation.activate(language)
+    # set language
+    translation.activate(language)
 
-        exporter = export.exporter
+    exporter = export.exporter
 
-        # get queryset via Export items
-        exporter.items = export.object_list
-        try:
+    # get queryset via Export items
+    exporter.items = export.object_list
+
+    try:
+        with transaction.atomic():
             exporter.export()
             export.status = Export.STATUS_FINISHED
             export.save(update_fields=['status'])
@@ -68,15 +69,16 @@ def export_items(export, language, filename=None):
             logger.info(
                 f"Updated {updated_count} ExportItem records to SUCCESS for export_id={export.id}"
             )
-            mail_successful_export(export, filename, exporter.get_output())     
-        except Exception as e:
+        mail_successful_export(export, filename, exporter.get_output())
+    except Exception as e:
+        with transaction.atomic():
             export.status = Export.STATUS_FAILED
             export.save(update_fields=['status'])
             updated_count = export.update_export_items_result(ExportItem.RESULT_FAILURE, detail=str(e))
             logger.info(
                 f"Updated {updated_count} ExportItem records to FAILURE for export_id={export.id}"
-            )          
-            notify_about_failed_export(export, str(e))               
+            )
+        notify_about_failed_export(export, str(e))
            
 
 def notify_about_failed_export(export, error_detail):
