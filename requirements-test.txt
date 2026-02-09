@@ -1,0 +1,27 @@
+# Test dependencies for django-outputs
+# Install with: pip install -r requirements-test.txt
+
+# Testing framework
+pytest
+pytest-django
+pytest-cov
+
+# Django and database
+Django>=4.2,<6.0
+psycopg2-binary  # PostgreSQL driver for tests
+
+# Django extensions
+django-rq
+django-crispy-forms
+django-pragmatic>=4.1.0
+django-whistle>=7.0.0
+django-select2
+django-gm2m  # Required for historical migrations (not used in code)
+rq-scheduler  # Required by django-rq scheduler
+
+# Utilities
+xlsxwriter
+cron-descriptor
+pytz
+fakeredis  # For mocking RQ queues in tests
+requests  # Required by pragmatic.mixins

@@ -11,9 +11,11 @@ from django.core.paginator import Paginator
 from django.db.models import Count, QuerySet
 from django.http import HttpResponse
 from django.template import loader
-from django.urls import translate_url
 from django.utils import translation
 from django.utils.timezone import localtime
+
+from outputs.usecases import execute_export
+
 try:
     # older Django
     from django.utils.translation import ugettext_lazy as _
@@ -148,8 +150,7 @@ class ConfirmExportMixin(object):
         return self.exporter_class(**self.exporter_params)
 
     def export(self):
-        from outputs import jobs
-        jobs.execute_export.delay(self.exporter_class, self.exporter_params, language=translation.get_language())
+        execute_export(self.get_exporter(), language=translation.get_language())
 
     def get_objects_count(self):
         return self.get_exporter().get_queryset().count()
@@ -285,6 +286,7 @@ class ExporterMixin(object):
     export_format = None
     export_context = None
     send_separately = False
+    output_type = Export.OUTPUT_TYPE_FILE
     description = ''
     url = ''
     language = 'en'
@@ -293,6 +295,7 @@ class ExporterMixin(object):
         self.url = kwargs.pop('url', self.url)
         self.language = kwargs.pop('language', self.language)
         self.filename = kwargs.pop('filename', self.filename)
+        self.output_type = kwargs.pop('output_type', self.output_type)
         self.send_separately = kwargs.pop('send_separately', self.send_separately)
         self.user = user
         self.recipients = recipients
@@ -306,7 +309,30 @@ class ExporterMixin(object):
 
     @classmethod
     def get_description(cls):
-        return cls.description
+        """
+        Return a human-friendly description for this exporter class.
+
+        - If `description` is set on the subclass, use that.
+        - Otherwise, build a generic label similar to `__repr__`, based only on
+          class-level attributes (no instantiation required).
+        """
+        if cls.description:
+            return cls.description
+
+        # Try to determine the model from queryset or explicit model attribute
+        model = None
+        queryset = getattr(cls, 'queryset', None)
+        if queryset is not None:
+            try:
+                model = queryset.model
+            except Exception:
+                model = None
+
+        if model is None:
+            model = getattr(cls, 'model', None)
+
+        model_name = getattr(model, '__name__', 'UnknownModel')
+        return f'{cls.__name__} ({model_name}, {cls.export_format}, {cls.export_context})'
 
     def get_filename(self):
         if not self.filename:
@@ -367,24 +393,35 @@ class ExporterMixin(object):
                 pass
 
         # track export
+        content_type = ContentType.objects.get_for_model(model, for_concrete_model=False)
         export = Export.objects.create(
-            content_type=ContentType.objects.get_for_model(model, for_concrete_model=False),
+            content_type=content_type,
             format=self.export_format,
             context=self.export_context,
+            output_type=self.output_type,
             exporter_path=".".join([self.__class__.__module__, self.__class__.__name__]),
             fields=fields,
             creator=self.user,
-            query_string=params.urlencode(),
+            query_string=params.urlencode() if params else "",
             total=items.count(),
             url=self.url,
             emails=[recipient.email for recipient in self.recipients]
         )
         export.recipients.add(*list(self.recipients))
 
-        try:
-            export.items.add(*list(items))
-        except AttributeError:
-            pass
+        # Create ExportItem entries for each item
+        from outputs.models import ExportItem
+        export_items = [
+            ExportItem(
+                export=export,
+                content_type=content_type,
+                object_id=item.pk,
+                detail=str(item),
+                result='',
+            )
+            for item in items
+        ]
+        ExportItem.objects.bulk_create(export_items, batch_size=1000)
 
         return export
 

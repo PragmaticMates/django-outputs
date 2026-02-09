@@ -13,10 +13,9 @@ from django.db import models
 from django.http import QueryDict
 from django.template import Context, Template
 from django.template.defaultfilters import title
-from django.urls import reverse, NoReverseMatch, resolve, Resolver404, translate_url
+from django.urls import reverse, NoReverseMatch, resolve, Resolver404
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _, get_language, override
-from gm2m import GM2MField
 from pytz import timezone
 from rq.exceptions import NoSuchJobError
 from rq.job import Job
@@ -26,22 +25,37 @@ if 'auditlog' in settings.INSTALLED_APPS:
 
 from outputs import settings as outputs_settings
 from outputs.cron import schedule_export
-from outputs.querysets import ExportQuerySet, SchedulerQuerySet
+from outputs.querysets import ExportQuerySet, SchedulerQuerySet, ExportItemQuerySet
 
 from pragmatic.templatetags.pragmatic_tags import filtered_values
 
 
+def get_check_constraint_kwargs(condition):
+    """
+    Return kwargs for CheckConstraint compatible across Django versions.
+
+    Newer Django versions use `condition=` instead of `check=`.
+    We introspect the signature so this stays correct without
+    hard-coding version numbers.
+    """
+    from django.db.models import CheckConstraint as _CheckConstraint
+
+    params = inspect.signature(_CheckConstraint.__init__).parameters
+    if 'condition' in params:
+        return {'condition': condition}
+    return {'check': condition}
+
+
 exporters_module_mapping = outputs_settings.EXPORTERS_MODULE_MAPPING
-related_models = outputs_settings.RELATED_MODELS
 
 
 class AbstractExport(models.Model):
     FORMAT_XLSX = 'XLSX'
-    FORMAT_XML_MRP = 'XML_MRP'
+    FORMAT_XML = 'XML'
     FORMAT_PDF = 'PDF'
     FORMATS = [
         (FORMAT_XLSX, 'XLSX'),
-        (FORMAT_XML_MRP, 'XML MRP'),
+        (FORMAT_XML, 'XML'),
         (FORMAT_PDF, 'PDF'),
     ]
 
@@ -74,45 +88,14 @@ class AbstractExport(models.Model):
     def model_class(self):
         return self.content_type.model_class()
 
-    @staticmethod
-    def get_exporter_path(model_class, context, format):
-        """
-        Returns generic exporter path based on content object model, export context and format.
-        """
-        exports_module = exporters_module_mapping.get(model_class._meta.label, None)
-
-        if isinstance(exports_module, dict):
-            exports_module = exports_module.get(context, None)
-
-        if not exports_module:
-            models_module = model_class.__module__
-            app_module = models_module.rsplit('.', maxsplit=1)[0]
-            exports_module = f'{app_module}.exporters'
-
-        exporter_class_name = model_class.__name__
-        format = title(format)
-        format = format.replace('_', '')
-        context = title(context)
-        exporter_class_name = '{}{}{}Exporter'.format(exporter_class_name, format, context)
-        exporter_path = f'{exports_module}.{exporter_class_name}'
-        return exporter_path
-
     @property
     def exporter_class(self):
         try:
-            if self.exporter_path:
-                return import_string(self.exporter_path)
-            else:
-                raise ModuleNotFoundError()
-        except ModuleNotFoundError:
-            # TODO: log
-            exporter_path = AbstractExport.get_exporter_path(
-                model_class=self.model_class,
-                context=self.context,
-                format=self.format
-            )
-            print('ERROR: Exporter path %s not found. Using fallback (predicted path) instead: %s' % (self.exporter_path, exporter_path))
-            return import_string(exporter_path)
+            return import_string(self.exporter_path)
+        except (ModuleNotFoundError, ImportError) as e:
+            raise ImportError(
+                f"Exporter path '{self.exporter_path}' could not be imported: {e}"
+            ) from e
 
     @property
     def exporter(self):
@@ -130,6 +113,9 @@ class AbstractExport(models.Model):
 
     @property
     def exporter_params(self):
+        """
+        Base exporter parameters. Subclasses may extend this.
+        """
         return {
             'params': self.params,
             'user': self.creator,
@@ -208,8 +194,16 @@ class Export(AbstractExport):
         (STATUS_FAILED, _('failed')),
         (STATUS_FINISHED, _('finished'))
     ]
+
+    OUTPUT_TYPE_FILE = 'FILE'
+    OUTPUT_TYPE_STREAM = 'STREAM'
+    OUTPUT_TYPES = [
+        (OUTPUT_TYPE_FILE, _('file')),
+        (OUTPUT_TYPE_STREAM, _('stream')),
+    ]
+
     status = models.CharField(_('status'), choices=STATUSES, max_length=10, default=STATUS_PENDING)
-    items = GM2MField(*related_models, related_name='exports_where_item')
+    output_type = models.CharField(_('output type'), choices=OUTPUT_TYPES, max_length=6, default=OUTPUT_TYPE_FILE)
     total = models.PositiveIntegerField(_('total items'), default=0)
     emails = ArrayField(verbose_name=_('emails'), base_field=models.EmailField(), default=list)
     url = models.URLField(_('export url'), max_length=1024, blank=True)
@@ -287,10 +281,30 @@ class Export(AbstractExport):
 
     @property
     def object_list(self):
-        ids = list(self.items.all().values_list('gm2m_pk', flat=True))
-        # ids = list(map(int, ids))
-        model = self.content_type.model_class()
-        return model.objects.filter(id__in=ids)
+        """
+        Return queryset of actual model instances from ExportItem records.
+        
+        This maintains the same API contract as the old GM2M items field:
+        - Old: export.items.all() returned model instances (e.g., User, Invoice objects)
+        - New: export.object_list returns the same model instances
+        
+        The underlying storage changed (GM2M -> ExportItem), but the interface
+        remains the same so existing code continues to work without changes.
+        """
+        # Get model class once (reuse the property that already calls content_type.model_class())
+        model_class = self.model_class
+        if not model_class:
+            # If content_type is invalid (model was deleted), return empty list
+            # Empty list works with id__in and pk__in filters (returns no results)
+            return []
+        
+        # Early return if no export items exist
+        if not self.items.exists():
+            return model_class.objects.none()
+        
+        # Get object IDs from ExportItem records and return actual model instances
+        object_ids = self.items.values_list('object_id', flat=True)
+        return model_class.objects.filter(pk__in=object_ids)
 
     @property
     def exporter_params(self):
@@ -298,13 +312,82 @@ class Export(AbstractExport):
             'params': self.params,
             'items': self.object_list,  # this is required as we want to send identically same export (not currently available filtered data)
             'user': self.creator,
+            'output_type': self.output_type,
             'recipients': self.recipients.all(),
             'selected_fields': self.fields,
             'language': self.get_language()
         }
 
+    def update_export_items_result(self, result, detail=''):
+        """
+        Update all ExportItem records for this export with the given result and detail.
+        
+        Args:
+            result: Either ExportItem.RESULT_SUCCESS or ExportItem.RESULT_FAILURE
+            detail: Optional detail message (e.g., error message for failures).
+                   Only updated if detail is provided (non-empty).
+        
+        Returns:
+            int: Number of ExportItem records updated
+        """
+        update_kwargs = {'result': result}
+        if detail:
+            update_kwargs['detail'] = detail
+        
+        updated_count = self.items.update(**update_kwargs)
+        
+        if updated_count == 0:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                f"update_export_items_result for export {self.id} updated 0 rows. "
+                f"Expected to update {self.items.count()} rows."
+            )
+        
+        return updated_count
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
+
+
+class ExportItem(models.Model):
+    RESULT_SUCCESS = 'SUCCESS'
+    RESULT_FAILURE = 'FAILURE'
+    RESULTS = [
+        (RESULT_SUCCESS, _('success')),
+        (RESULT_FAILURE, _('failure')),
+    ]
+
+    export = models.ForeignKey(
+        Export,
+        verbose_name=_('export'),
+        on_delete=models.CASCADE,
+        related_name='items',
+        related_query_name='item',
+    )
+    content_type = models.ForeignKey(ContentType, verbose_name=_('content type'), on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    result = models.CharField(_('result'), choices=RESULTS, max_length=7, blank=True)
+    detail = models.TextField(_('detail'), blank=True, default='')
+    created = models.DateTimeField(_('created'), auto_now_add=True)
+    modified = models.DateTimeField(_('modified'), auto_now=True)
+    objects = ExportItemQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = _('export item')
+        verbose_name_plural = _('export items')
+        ordering = ('created',)
+        default_permissions = getattr(settings, 'DEFAULT_PERMISSIONS', ('add', 'change', 'delete', 'view'))
+        indexes = [
+            models.Index(fields=['content_type', 'object_id']),
+            models.Index(fields=['export', 'result']),
+            models.Index(fields=['export', 'created']),
+        ]
+
+    def __str__(self):
+        model = self.content_type.model_class()
+        name = model._meta.verbose_name if model else self.content_type.model
+        return '{} #{} {} ({})'.format(_('Export item'), self.pk, name, self.result)
 
 
 class Scheduler(AbstractExport):
@@ -349,11 +432,14 @@ class Scheduler(AbstractExport):
 
         constraints = [
             # constraint of empty cront string for custom routine
-            models.CheckConstraint(check=
-                                   # models.Q(cron_string='') ^ ~models.Q(routine='CUSTOM'),  # Added in Django 4.1 (https://docs.djangoproject.com/en/4.1/releases/4.1/#models)
-                                   models.Q(models.Q(cron_string='') & ~models.Q(routine='CUSTOM')) |
-                                   models.Q(~models.Q(cron_string='') & models.Q(routine='CUSTOM')),
-                                   name='custom_cron_string')
+            models.CheckConstraint(
+                **get_check_constraint_kwargs(
+                    # models.Q(cron_string='') ^ ~models.Q(routine='CUSTOM'),  # Added in Django 4.1 (https://docs.djangoproject.com/en/4.1/releases/4.1/#models)
+                    models.Q(models.Q(cron_string='') & ~models.Q(routine='CUSTOM')) |
+                    models.Q(~models.Q(cron_string='') & models.Q(routine='CUSTOM'))
+                ),
+                name='custom_cron_string',
+            )
         ]
 
     def __str__(self):

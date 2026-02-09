@@ -43,7 +43,7 @@
                         <td>
                             {% if scheduler.format == scheduler.FORMAT_XLSX %}
                                 <span class="badge badge-pill badge-success">{{ scheduler.get_format_display }}</span>
-                            {% elif scheduler.format == scheduler.FORMAT_XML_MRP %}
+                            {% elif scheduler.format == scheduler.FORMAT_XML %}
                                 <span class="badge badge-pill badge-info">{{ scheduler.get_format_display }}</span>
                             {% else %}
                                 {{ scheduler.get_format_display }}
