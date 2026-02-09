@@ -79,6 +79,7 @@ def export_items(export, language, filename=None):
                 f"Updated {updated_count} ExportItem records to FAILURE for export_id={export.id}"
             )
         notify_about_failed_export(export, str(e))
+        raise
            
 
 def notify_about_failed_export(export, error_detail):
@@ -107,8 +108,6 @@ def notify_about_failed_export(export, error_detail):
         # notify creator, recipients and superusers about failed export
         for user in notify_users:
             notify(recipient=user, event='EXPORT_FAILED', object=export, target=export.content_type, details=details)
-
-    raise
 
 
 def mail_successful_export(export, filename=None, output_file=None):

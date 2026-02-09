@@ -192,9 +192,7 @@ class TestExportItems:
         
         # Status should be updated even on failure
         export.refresh_from_db()
-        # notify_about_failed_export raises, so the transaction is rolled back
-        # and the status remains unchanged
-        assert export.status == Export.STATUS_PENDING
+        assert export.status == Export.STATUS_FAILED
 
 
 class TestMailExport:
