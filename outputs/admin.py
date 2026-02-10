@@ -59,35 +59,12 @@ class ExportedWithExporterListFilter(admin.SimpleListFilter):
             return queryset
         return queryset.filter(exporter_path=value)
 
-
-class NotExportedWithExporterListFilter(admin.SimpleListFilter):
-    title = _('not yet exported with exporter')
-    parameter_name = 'not_exported_with_exporter'
-
-    def lookups(self, request, model_admin):
-        """
-        Show all available exporter classes (children of ExporterMixin).
-        """
-        return get_exporter_path_choices()
-
-    def queryset(self, request, queryset):
-        """
-        Filter exports that have not finished for the selected exporter.
-        This includes all non-finished statuses (pending, processing, failed).
-        """
-        value = self.value()
-        if not value:
-            return queryset
-        return queryset.exclude(exporter_path=value)
-
-
 @admin.register(Export)
 class ExportAdmin(admin.ModelAdmin):
     date_hierarchy = 'created'
     search_fields = ['creator__first_name', 'creator__last_name']
     list_select_related = ['creator', 'content_type']
-    list_filter = ['status', 'output_type', 'format', 'context', 'content_type',
-                   ExportedWithExporterListFilter, NotExportedWithExporterListFilter]
+    list_filter = ['status', 'output_type', 'format', 'context', 'content_type', ExportedWithExporterListFilter]
     list_display = ('id', 'content_type', 'output_type', 'format', 'context', 'exporter_path', 'status', 'creator', 'total', 'created')
     actions = ['send_mail']
     autocomplete_fields = ['creator', 'recipients']

@@ -145,7 +145,7 @@ class AbstractExport(models.Model):
 
                 value = Template("{{ value }}").render(Context({'value': value}))  # workaround for datetime ranges
                 result = f'{result}{label}: {value}\n'
-        except AttributeError:
+        except (AttributeError, ImportError, ModuleNotFoundError):
             values = self.params
 
             for param, value in values.items():
@@ -158,7 +158,12 @@ class AbstractExport(models.Model):
             return []
 
         field_labels = []
-        exporter = self.exporter
+        try:
+            exporter = self.exporter
+        except (ImportError, ModuleNotFoundError):
+            # If the exporter cannot be imported, fall back to returning the raw
+            # field names instead of breaking the view.
+            return list(self.fields or [])
 
         try:
             selectable_fields = exporter.selectable_fields()
