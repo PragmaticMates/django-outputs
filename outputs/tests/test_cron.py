@@ -1,8 +1,7 @@
 """
 Tests for cron functions.
 """
-import sys
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 from outputs.models import Scheduler
 from outputs.cron import schedule_export
@@ -11,88 +10,39 @@ from outputs.cron import schedule_export
 class TestScheduleExport:
     """Tests for schedule_export function."""
 
-    def test_schedule_export_execution(self, scheduler, mock_rq_queue):
-        """Test export execution."""
-        with patch('outputs.cron.import_string') as mock_import:
+    def test_schedule_export_calls_execute_export(self, scheduler, mock_rq_queue):
+        """Test that schedule_export calls execute_export with correct arguments."""
+        with patch('outputs.cron.import_string') as mock_import, \
+             patch('outputs.usecases.execute_export') as mock_execute:
             mock_import.return_value = Scheduler
-            
-            # cron.py does 'from outputs import jobs' inside the function
-            # We need to create a mock module and patch it in sys.modules
-            mock_jobs_module = MagicMock()
-            mock_execute_export = Mock()
-            mock_execute_export.delay = Mock()
-            mock_jobs_module.execute_export = mock_execute_export
-            
-            # Patch the outputs module to have jobs attribute
-            original_outputs = sys.modules.get('outputs')
-            mock_outputs = MagicMock()
-            mock_outputs.jobs = mock_jobs_module
-            sys.modules['outputs'] = mock_outputs
-            
-            try:
-                schedule_export(scheduler.pk, 'outputs.models.Scheduler')
-            finally:
-                if original_outputs:
-                    sys.modules['outputs'] = original_outputs
-            
-            assert mock_execute_export.delay.called
 
-    def test_schedule_export_executions_update(self, scheduler, mock_rq_queue):
-        """Test executions list update."""
-        initial_executions_count = len(scheduler.executions)
-        
-        with patch('outputs.cron.import_string') as mock_import:
+            schedule_export(scheduler.pk, 'outputs.models.Scheduler')
+
+            mock_execute.assert_called_once()
+            call_kwargs = mock_execute.call_args.kwargs
+            assert call_kwargs['language'] == scheduler.language
+
+    def test_schedule_export_passes_exporter_instance(self, scheduler, mock_rq_queue):
+        """Test that schedule_export passes an exporter instance (not class) to execute_export."""
+        with patch('outputs.cron.import_string') as mock_import, \
+             patch('outputs.usecases.execute_export') as mock_execute:
             mock_import.return_value = Scheduler
-            
-            # cron.py does 'from outputs import jobs' inside the function
-            # We need to create a mock module and patch it in sys.modules
-            mock_jobs_module = MagicMock()
-            mock_execute_export = Mock()
-            mock_execute_export.delay = Mock()
-            mock_jobs_module.execute_export = mock_execute_export
-            
-            # Patch the outputs module to have jobs attribute
-            original_outputs = sys.modules.get('outputs')
-            mock_outputs = MagicMock()
-            mock_outputs.jobs = mock_jobs_module
-            sys.modules['outputs'] = mock_outputs
-            
-            try:
-                schedule_export(scheduler.pk, 'outputs.models.Scheduler')
-            finally:
-                if original_outputs:
-                    sys.modules['outputs'] = original_outputs
-            
+
+            schedule_export(scheduler.pk, 'outputs.models.Scheduler')
+
+            exporter_arg = mock_execute.call_args.args[0]
+            # Should be an instance, not a class
+            assert not isinstance(exporter_arg, type)
+
+    def test_schedule_export_updates_executions(self, scheduler, mock_rq_queue):
+        """Test that executions list is updated after export."""
+        initial_executions_count = len(scheduler.executions)
+
+        with patch('outputs.cron.import_string') as mock_import, \
+             patch('outputs.usecases.execute_export'):
+            mock_import.return_value = Scheduler
+
+            schedule_export(scheduler.pk, 'outputs.models.Scheduler')
+
             scheduler.refresh_from_db()
             assert len(scheduler.executions) == initial_executions_count + 1
-
-    def test_schedule_export_job_delay(self, scheduler, mock_rq_queue):
-        """Test job delay."""
-        with patch('outputs.cron.import_string') as mock_import:
-            mock_import.return_value = Scheduler
-            
-            # cron.py does 'from outputs import jobs' inside the function
-            # We need to create a mock module and patch it in sys.modules
-            mock_jobs_module = MagicMock()
-            mock_execute_export = Mock()
-            mock_execute_export.delay = Mock()
-            mock_jobs_module.execute_export = mock_execute_export
-            
-            # Patch the outputs module to have jobs attribute
-            original_outputs = sys.modules.get('outputs')
-            mock_outputs = MagicMock()
-            mock_outputs.jobs = mock_jobs_module
-            sys.modules['outputs'] = mock_outputs
-            
-            try:
-                schedule_export(scheduler.pk, 'outputs.models.Scheduler')
-            finally:
-                if original_outputs:
-                    sys.modules['outputs'] = original_outputs
-            
-            # Check that delay was called with correct arguments
-            assert mock_execute_export.delay.called
-            call_args = mock_execute_export.delay.call_args
-            assert 'language' in call_args.kwargs
-            assert call_args.kwargs['language'] == scheduler.language
-

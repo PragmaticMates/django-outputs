@@ -242,6 +242,8 @@ class FilterExporterMixin(object):
     def __init__(self, params, **kwargs):
         self.params = params
         self.items = kwargs.pop('items', None)
+        self.queryset = kwargs.pop('queryset', self.queryset)
+        self.filter_class = kwargs.pop('filter_class', self.filter_class)
         super().__init__(**kwargs)
 
         # create filter

@@ -214,9 +214,33 @@ class TestFilterExporterMixin:
         DummyMixin.filter_class = Mock(return_value=Mock())
         mixin = DummyMixin(params={}, queryset=SampleModel.objects.all())
         mixin.get_whole_queryset = Mock(return_value=SampleModel.objects.all())
-        
+
         filter_obj = mixin.get_filter()
         assert filter_obj is not None
+
+    def test_filter_exporter_mixin_accepts_queryset_and_filter_class_via_kwargs(self):
+        """Test that queryset and filter_class can be overridden via kwargs."""
+        class Base:
+            def __init__(self, **kwargs):
+                pass
+
+        class DummyMixin(FilterExporterMixin, Base):
+            queryset = None
+            filter_class = None
+
+        custom_queryset = SampleModel.objects.all()
+        custom_filter_class = Mock(return_value=Mock())
+
+        mixin = DummyMixin(
+            params={},
+            queryset=custom_queryset,
+            filter_class=custom_filter_class,
+        )
+
+        assert mixin.queryset is custom_queryset
+        assert mixin.filter_class is custom_filter_class
+        assert mixin.filter is not None
+        custom_filter_class.assert_called_once_with({}, queryset=custom_queryset)
 
     def test_filter_exporter_mixin_get_queryset(self):
         """Test queryset filtering."""
