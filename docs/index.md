@@ -17,13 +17,14 @@ pip install django-outputs
 ```
 
 ```python
+# settings.py
 INSTALLED_APPS = [
     ...
     'outputs',
 ]
 ```
 
-Full documentation: https://django-outputs.readthedocs.io
+See [Installation](installation.md) for the full setup guide.
 
 ## License
 
