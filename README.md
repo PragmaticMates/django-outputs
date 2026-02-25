@@ -1,87 +1,166 @@
 # django-outputs
 
-One Paragraph of project description goes here
+A reusable Django app that provides asynchronous data exports and scheduled recurring exports. Exports are processed via [django-rq](https://github.com/rq/django-rq) and delivered to recipients by email.
 
-## Getting Started
+## Features
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+- **Async exports** – Export data to XLSX, XML, or PDF; processing runs in an RQ worker and the result is emailed to recipients.
+- **Scheduled exports** – Set up recurring exports (daily, weekly, monthly, or custom cron) using `rq-scheduler`.
+- **Mixin-based exporters** – Compose exporters from provided mixins; supports field selection, django-filter integration, and parallel XLSX writing.
+- **Export tracking** – Every export and its individual items are persisted in the database with status tracking.
+- **Admin & views** – Ships with Django admin registrations and list/CRUD views for exports and schedulers.
 
-### Prerequisites
+## Requirements
 
-What things you need to install the software and how to install them
+- Python 3.5+
+- Django 4.2+
+- PostgreSQL (uses `ArrayField`)
+- Redis (for RQ queues)
 
-```
-Give examples
-```
+## Installation
 
-### Installing
-
-A step by step series of examples that tell you have to get a development env running
-
-Say what the step will be
-
-```
-Give the example
-```
-
-And repeat
-
-```
-until finished
+```bash
+pip install django-outputs
 ```
 
-End with an example of getting some data out of the system or using it for a little demo
+Add to `INSTALLED_APPS`:
 
-## Running the tests
-
-Explain how to run the automated tests for this system
-
-### Break down into end to end tests
-
-Explain what these tests test and why
-
-```
-Give an example
+```python
+INSTALLED_APPS = [
+    ...
+    'outputs',
+]
 ```
 
-### And coding style tests
+Include the URLs:
 
-Explain what these tests test and why
-
+```python
+# urls.py
+urlpatterns = [
+    ...
+    path('', include('outputs.urls', namespace='outputs')),
+]
 ```
-Give an example
+
+Configure three RQ queues in your settings:
+
+```python
+RQ_QUEUES = {
+    'default': {'HOST': 'localhost', 'PORT': 6379, 'DB': 0},
+    'exports': {'HOST': 'localhost', 'PORT': 6379, 'DB': 0, 'DEFAULT_TIMEOUT': 360},
+    'cron':    {'HOST': 'localhost', 'PORT': 6379, 'DB': 0, 'DEFAULT_TIMEOUT': 360},
+}
 ```
 
-## Deployment
+Run migrations:
 
-Add additional notes about how to deploy this on a live system
+```bash
+python manage.py migrate
+```
 
-## Built With
+## Configuration
 
-* [Dropwizard](http://www.dropwizard.io/1.0.2/docs/) - The web framework used
-* [Maven](https://maven.apache.org/) - Dependency Management
-* [ROME](https://rometools.github.io/rome/) - Used to generate RSS Feeds
+All settings are optional and are read from your Django project settings:
 
-## Contributing
+| Setting | Default | Description |
+|---|---|---|
+| `OUTPUTS_EXCLUDE_EXPORTERS` | `[]` | List of exporter dotted paths to hide from admin/UI |
+| `OUTPUTS_EXPORTERS_MODULE_MAPPING` | `{}` | Maps `ModelLabel` + context to exporter module (used for statistics/detail contexts) |
+| `OUTPUTS_MIGRATION_DEPENDENCIES` | `[]` | Extra migration dependencies to add |
+| `OUTPUTS_RELATED_MODELS` | `[]` | Related models |
+| `OUTPUTS_NUMBER_OF_THREADS` | `4` | Worker threads for parallel XLSX page writing |
+| `OUTPUTS_SAVE_AS_FILE` | `False` | Save export file to Django's default storage instead of attaching it to email |
 
-Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for details on our code of conduct, and the process for submitting pull requests to us.
+## Building an Exporter
 
-## Versioning
+Exporters are plain Python classes assembled from mixins. A typical XLSX list exporter:
 
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/your/project/tags). 
+```python
+import django_filters
+from outputs.mixins import FilterExporterMixin, ExcelExporterMixin
+from myapp.models import Order
 
-## Authors
+class OrderFilter(django_filters.FilterSet):
+    class Meta:
+        model = Order
+        fields = ['status', 'created']
 
-* **Billie Thompson** - *Initial work* - [PurpleBooth](https://github.com/PurpleBooth)
+class OrderExporter(FilterExporterMixin, ExcelExporterMixin):
+    filename = 'orders.xlsx'
+    description = 'Orders export'
+    queryset = Order.objects.all()
+    filter_class = OrderFilter
 
-See also the list of [contributors](https://github.com/your/project/contributors) who participated in this project.
+    def get_worksheet_title(self, index=0):
+        return 'Orders'
+
+    @staticmethod
+    def selectable_fields():
+        return {
+            'Order': [
+                # (attribute, header label, column width[, cell format[, transform func]])
+                ('id',         'ID',     5),
+                ('status',     'Status', 15),
+                ('created',    'Date',   15, 'date'),
+                ('total',      'Total',  12, 'money'),
+            ]
+        }
+```
+
+### Triggering an Export from a View
+
+Use `ConfirmExportMixin` for a simple confirmation screen or `SelectExportMixin` to let the user pick which fields to export:
+
+```python
+from django.views.generic import FormView
+from outputs.mixins import ConfirmExportMixin
+from myapp.exporters import OrderExporter
+
+class OrderExportView(ConfirmExportMixin, FormView):
+    exporter_class = OrderExporter
+    back_url = '/orders/'
+```
+
+### Overriding Queryset or Filter at Runtime
+
+`FilterExporterMixin` accepts `queryset` and `filter_class` keyword arguments so you can override the defaults when constructing the exporter:
+
+```python
+exporter = OrderExporter(
+    params=request.GET,
+    queryset=Order.objects.filter(shop=request.user.shop),
+    filter_class=ShopOrderFilter,
+    user=request.user,
+    recipients=[request.user],
+)
+```
+
+## Scheduled Exports
+
+A `Scheduler` instance wraps any exporter and triggers it on a cron schedule. Schedulers can be created:
+
+- Via the Django admin
+- Via the UI at `outputs:scheduler_create`
+- Directly from an existing `Export` at `outputs:scheduler_create_from_export`
+
+Routine choices: `DAILY` (08:00), `WEEKLY` (Monday 08:00), `MONTHLY` (1st of month 08:00), or `CUSTOM` (arbitrary cron string).
+
+The scheduler job is managed automatically: creating, activating, deactivating, or deleting a `Scheduler` record updates the corresponding `rq-scheduler` cron job via Django signals.
+
+## Optional Integrations
+
+- **`django-whistle`** – When installed, sends in-app notifications on export failure and scheduler creation.
+- **`django-auditlog`** – When installed, audit history is recorded for `Export` and `Scheduler` models.
+
+## Running Tests
+
+```bash
+pip install -r requirements-test.txt
+pytest
+```
+
+Tests require a running PostgreSQL instance. Connection defaults can be overridden with environment variables: `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
-
-## Acknowledgments
-
-* Hat tip to anyone who's code was used
-* Inspiration
-* etc
+GPLv3
