@@ -286,6 +286,196 @@ def selectable_iterative_sets():
     }
 ```
 
+## Models
+
+All models live in `outputs.models`.
+
+### `AbstractExport`
+
+Abstract base class shared by `Export` and `Scheduler`. Holds the fields that describe *what* should be exported:
+
+| Field | Type | Description |
+|---|---|---|
+| `content_type` | FK → `ContentType` | The Django model being exported |
+| `format` | `CharField` | `XLSX`, `XML`, or `PDF` |
+| `context` | `CharField` | `LIST`, `STATISTICS`, or `DETAIL` |
+| `exporter_path` | `CharField` | Dotted import path of the exporter class |
+| `fields` | `ArrayField` | List of selected field attribute names; `None` means all fields |
+| `query_string` | `TextField` | URL-encoded filter parameters |
+| `creator` | FK → `AUTH_USER_MODEL` | User who created the export |
+| `recipients` | M2M → `User` | Users who will receive the export email |
+| `send_separately` | `BooleanField` | Send one email per recipient instead of a single combined email |
+| `created` / `modified` | `DateTimeField` | Auto-managed timestamps |
+
+Notable properties:
+
+- **`model_class`** – Returns the Python model class from `content_type`.
+- **`exporter_class`** – Imports and returns the exporter class from `exporter_path`.
+- **`exporter`** – Instantiates the exporter, automatically dropping constructor arguments the class does not accept.
+- **`params`** – Returns `query_string` as a `QueryDict`.
+- **`get_params_display()`** – Returns a human-readable multiline string of active filter values, falling back to raw key/value pairs if the exporter cannot be imported.
+- **`get_fields_labels()`** – Returns display labels for the selected fields by consulting `selectable_fields()` on the exporter.
+
+---
+
+### `Export`
+
+Tracks a single export request through its lifecycle.
+
+Additional fields beyond `AbstractExport`:
+
+| Field | Type | Description |
+|---|---|---|
+| `status` | `CharField` | `PENDING` → `PROCESSING` → `FINISHED` / `FAILED` |
+| `output_type` | `CharField` | `FILE` (attach to email) or `STREAM` (direct download) |
+| `total` | `PositiveIntegerField` | Number of items in the export |
+| `emails` | `ArrayField` | Snapshot of recipient email addresses at export time |
+| `url` | `URLField` | URL of the originating list view |
+
+Notable properties and methods:
+
+- **`object_list`** – Returns a queryset of the actual model instances tracked by the associated `ExportItem` records. This provides the same API as the former GM2M `items` field.
+- **`update_export_items_result(result, detail='')`** – Bulk-updates all `ExportItem` rows for this export with a success or failure result.
+- **`send_mail(language, filename=None)`** – Enqueues the `mail_export_by_id` RQ job on the `exports` queue.
+- **`get_absolute_url()`** – Returns the originating list URL with the original query string appended.
+- **`get_items_url()`** – Returns the list URL filtered to only the items in this export (`?export=<pk>`).
+
+Manager: `ExportQuerySet` (currently a plain queryset; use Django ORM filters directly).
+
+If `django-auditlog` is installed, changes to `Export` are recorded automatically (excluding `modified` and `creator`).
+
+---
+
+### `ExportItem`
+
+Stores one row per object included in an export. Replaced the former GM2M generic relation.
+
+| Field | Type | Description |
+|---|---|---|
+| `export` | FK → `Export` | Parent export (cascade delete, `related_name='items'`) |
+| `content_type` | FK → `ContentType` | Model type of the exported object |
+| `object_id` | `PositiveIntegerField` | PK of the exported object |
+| `result` | `CharField` | `SUCCESS`, `FAILURE`, or empty (not yet processed) |
+| `detail` | `TextField` | String representation of the object, or error message on failure |
+| `created` / `modified` | `DateTimeField` | Auto-managed timestamps |
+
+Indexes are defined on `(content_type, object_id)`, `(export, result)`, and `(export, created)` for efficient querying.
+
+Custom queryset methods on `ExportItemQuerySet`:
+
+- **`.successful()`** – Filter to `result=SUCCESS`.
+- **`.failed()`** – Filter to `result=FAILURE`.
+- **`.for_object(object_id, content_type)`** – Filter to a specific object.
+- **`.by_export_id(export_id)`** – Filter by parent export PK.
+
+---
+
+### `Scheduler`
+
+Extends `AbstractExport` with cron scheduling metadata.
+
+Additional fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `routine` | `CharField` | `DAILY`, `WEEKLY`, `MONTHLY`, or `CUSTOM` |
+| `cron_string` | `CharField` | User-supplied cron expression (only when `routine=CUSTOM`) |
+| `is_active` | `BooleanField` | Whether the scheduler is currently running |
+| `executions` | `ArrayField` | List of datetime stamps each time the scheduler has run |
+| `job_id` | `CharField` | UUID of the `rq-scheduler` cron job |
+| `language` | `CharField` | Language code used when rendering the exported file and email |
+
+A database `CheckConstraint` enforces that `cron_string` is non-empty if and only if `routine=CUSTOM`.
+
+Notable methods:
+
+- **`schedule()`** – Cancels any existing cron job, then (re-)registers the scheduler with `rq-scheduler` if `is_active=True`. Saves the new `job_id`.
+- **`cancel_schedule()`** – Deletes the RQ job without touching the database record.
+- **`get_cron_string()`** – Returns the effective cron expression for the chosen routine (all times are UTC: daily/weekly/monthly fire at 07:00 UTC).
+- **`cron_description`** (property) – Returns a localised human-readable description via `cron-descriptor`.
+- **`is_scheduled`** (property) – `True` if an active RQ job exists for this scheduler.
+- **`schedule_time`** (property) – Next scheduled execution time, converted to the project's `TIME_ZONE`.
+
+Custom queryset method on `SchedulerQuerySet`:
+
+- **`.active()`** – Filter to `is_active=True`.
+
+If `django-auditlog` is installed, changes are recorded (excluding `modified`, `creator`, `executions`, and `job_id`).
+
+---
+
+## Admin
+
+All three models are registered in `outputs.admin`.
+
+### `ExportAdmin`
+
+- **List display**: id, content type, output type, format, context, exporter path, status, creator, total items, created date.
+- **Filters**: status, output type, format, context, content type, and a custom `ExportedWithExporterListFilter` that lists all registered exporter classes (subclasses of `ExporterMixin` not ending in `Mixin`, minus any in `OUTPUTS_EXCLUDE_EXPORTERS`).
+- **Search**: creator first/last name.
+- **Actions**: *Send mail* – re-sends the export email for selected records using the request's current language.
+- **View on site**: links to `export.get_absolute_url()`.
+- `total`, `created`, and `modified` are read-only.
+
+### `ExportItemAdmin`
+
+- **List display**: id, export (linked to the Export change page), content type, output type, object id, result, truncated detail (100 chars), created date.
+- **Filters**: result, created date, export output type.
+- **Search**: export id, object id.
+- All fields are read-only; the record is a pure audit trail.
+- `show_full_result_count = False` to avoid expensive `COUNT(*)` on large tables.
+
+### `SchedulerAdmin`
+
+- **List display**: id, is_active, routine, cron_string, cron_description, content type, format, creator, created date.
+- **Filters**: routine, is_active, format, context, content type.
+- **Search**: creator first/last name.
+
+The `get_exporter_path_choices()` helper (also available for use in your own forms) introspects the `ExporterMixin` class hierarchy at runtime to build the list of registered exporters, using `get_description()` as the human-readable label.
+
+---
+
+## Signals
+
+Signals are defined in `outputs.signals` and connected automatically when the app loads.
+
+### `export_executed_post_save` (`post_save` on `Export`)
+
+Fires when a new `Export` record is created. If `django-whistle` is installed, schedules a delayed RQ task (1 minute) via `notify_about_executed_export` that notifies all active superusers (excluding the creator and recipients) with an `EXPORT_EXECUTED` event.
+
+### `reschedule_scheduler` (`pre_save` on `Scheduler`)
+
+Fires before a `Scheduler` is saved. If `is_active`, `routine`, or `cron_string` has changed, enqueues `schedule_scheduler` (which calls `scheduler.schedule()`) to run after the save completes. This keeps the RQ cron job in sync with any change to the scheduler's settings.
+
+### `cancel_scheduler` (`pre_delete` on `Scheduler`)
+
+Fires before a `Scheduler` is deleted. Calls `scheduler.cancel_schedule()` to remove the corresponding RQ cron job so no orphaned jobs remain in Redis.
+
+### `notify_about_scheduler` (`post_save` on `Scheduler`)
+
+Fires when a new `Scheduler` is created. If `django-whistle` is installed, sends a `SCHEDULER_CREATED` notification to all manager-level users (excluding the creator).
+
+### `update_export_item` (custom `export_item_changed` signal)
+
+A custom `Signal` instance exported as `outputs.signals.export_item_changed`. Send it to create or update an `ExportItem` for a specific `(export_id, content_type, object_id)` combination:
+
+```python
+from outputs.signals import export_item_changed
+from django.contrib.contenttypes.models import ContentType
+from outputs.models import ExportItem
+
+export_item_changed.send(
+    sender=MyModel,
+    export_id=export.pk,
+    content_type=ContentType.objects.get_for_model(MyModel),
+    object_id=instance.pk,
+    result=ExportItem.RESULT_SUCCESS,
+    detail=str(instance),
+)
+```
+
+---
+
 ## Scheduled Exports
 
 A `Scheduler` instance wraps any exporter and triggers it on a cron schedule. Schedulers can be created:
