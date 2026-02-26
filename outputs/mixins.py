@@ -234,56 +234,10 @@ class SelectExportMixin(ConfirmExportMixin, ExportFieldsPermissionsMixin):
         return kwargs
 
 
-class FilterExporterMixin(object):
-    filter_class = None
-    queryset = None
-    model = None
-
-    def __init__(self, params, **kwargs):
-        self.params = params
-        self.items = kwargs.pop('items', None)
-        self.queryset = kwargs.pop('queryset', self.queryset)
-        self.filter_class = kwargs.pop('filter_class', self.filter_class)
-        super().__init__(**kwargs)
-
-        # create filter
-        self.filter = self.get_filter()
-
-    @classmethod
-    def get_model(cls):
-        return cls.queryset.model if cls.queryset is not None else cls.model
-
-    @classmethod
-    def get_app_and_model(cls):
-        return cls.get_model()._meta.label.split('.')
-
-    def get_filter(self):
-        return self.filter_class(self.params, queryset=self.get_whole_queryset(self.params))
-
-    def get_whole_queryset(self, params):
-        proxy = params.get('proxy', None)
-
-        if proxy:
-            self.queryset = self.queryset.proxy(proxy)
-
-        return self.queryset
-
-    def get_queryset(self):
-        items = getattr(self, 'items')
-
-        if items:
-            return self.filter.queryset.filter(pk__in=items)
-
-        return self.filter.qs
-
-    def get_message_body(self, count, file_url=None):
-        template = loader.get_template('outputs/export_message_body.html')
-        fv = filtered_values(self.filter, self.params)
-        return template.render({'count': count, 'filtered_values': fv, 'file_url': file_url})
-
-
 class ExporterMixin(object):
     content_type = 'application/force-download'
+    queryset = None
+    model = None
     filename = None
     export_format = None
     export_context = None
@@ -294,6 +248,7 @@ class ExporterMixin(object):
     language = 'en'
 
     def __init__(self, user, recipients, **kwargs):
+        self.queryset = kwargs.pop('queryset', self.queryset)
         self.url = kwargs.pop('url', self.url)
         self.language = kwargs.pop('language', self.language)
         self.filename = kwargs.pop('filename', self.filename)
@@ -306,6 +261,14 @@ class ExporterMixin(object):
         self.output = io.BytesIO()
 
     @classmethod
+    def get_model(cls):
+        return cls.queryset.model if cls.queryset is not None else cls.model
+
+    @classmethod
+    def get_app_and_model(cls):
+        return cls.get_model()._meta.label.split('.')
+
+    @classmethod
     def get_path(cls):
         return ".".join([cls.__module__, cls.__name__])
 
@@ -315,26 +278,28 @@ class ExporterMixin(object):
         Return a human-friendly description for this exporter class.
 
         - If `description` is set on the subclass, use that.
-        - Otherwise, build a generic label similar to `__repr__`, based only on
-          class-level attributes (no instantiation required).
+        - Otherwise, build a generic label based only on class-level
+          attributes (`queryset` / `model`, `export_format`,
+          `export_context`) without instantiating the exporter.
         """
         if cls.description:
             return cls.description
 
-        # Try to determine the model from queryset or explicit model attribute
-        model = None
-        queryset = getattr(cls, 'queryset', None)
-        if queryset is not None:
-            try:
-                model = queryset.model
-            except Exception:
-                model = None
-
-        if model is None:
-            model = getattr(cls, 'model', None)
+        # Prefer the centralized model resolution logic so that both
+        # `queryset` and `model` class attributes are supported.
+        try:
+            model = cls.get_model()
+        except Exception:
+            model = None
 
         model_name = getattr(model, '__name__', 'UnknownModel')
-        return f'{cls.__name__} ({model_name}, {cls.export_format}, {cls.export_context})'
+        export_format = getattr(cls, 'export_format', '') or ''
+        export_context = getattr(cls, 'export_context', '') or ''
+
+        return f'{cls.__name__} ({model_name}, {export_format}, {export_context})'
+
+    def get_queryset(self):
+        return self.queryset
 
     def get_filename(self):
         if not self.filename:
@@ -377,8 +342,8 @@ class ExporterMixin(object):
         return None
 
     def save_export(self):
-        items = self.get_queryset().all()
-        model = self.queryset.model if hasattr(self, 'queryset') else self.model
+        items = self.get_queryset()
+        model = self.queryset.model if self.queryset else self.model
         params = getattr(self, 'params', {})
 
         fields = getattr(self, 'selected_fields', None)
@@ -426,6 +391,37 @@ class ExporterMixin(object):
         ExportItem.objects.bulk_create(export_items, batch_size=1000)
 
         return export
+
+
+class FilterExporterMixin(ExporterMixin):
+    filter_class = None
+
+    def __init__(self, params, **kwargs):
+        self.params = params
+        self.filter_class = kwargs.pop('filter_class', self.filter_class)
+        super().__init__(**kwargs)
+
+        # create filter
+        self.filter = self.get_filter()
+
+    def get_filter(self):
+        return self.filter_class(self.params, queryset=self.get_whole_queryset(self.params))
+
+    def get_whole_queryset(self, params):
+        proxy = params.get('proxy', None)
+
+        if proxy:
+            self.queryset = self.queryset.proxy(proxy)
+
+        return self.queryset
+
+    def get_queryset(self):
+        return self.filter.qs
+
+    def get_message_body(self, count, file_url=None):
+        template = loader.get_template('outputs/export_message_body.html')
+        fv = filtered_values(self.filter, self.params)
+        return template.render({'count': count, 'filtered_values': fv, 'file_url': file_url})
 
 
 class ExcelExporterMixin(ExporterMixin):
@@ -555,9 +551,6 @@ class ExcelExporterMixin(ExporterMixin):
                 except TypeError:
                     # force string format
                     worksheet.write(row, col, str(value), cell_format)
-
-    def get_queryset(self):
-        raise NotImplementedError()
 
     def write_header(self, worksheet, fields, iterative_sets_fields):
         last_col = 0

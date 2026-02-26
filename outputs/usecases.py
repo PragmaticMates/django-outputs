@@ -57,9 +57,6 @@ def export_items(export, language, filename=None):
 
     exporter = export.exporter
 
-    # get queryset via Export items
-    exporter.items = export.object_list
-
     try:
         with transaction.atomic():
             exporter.export()

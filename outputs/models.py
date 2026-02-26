@@ -315,7 +315,7 @@ class Export(AbstractExport):
     def exporter_params(self):
         return {
             'params': self.params,
-            'items': self.object_list,  # this is required as we want to send identically same export (not currently available filtered data)
+            'queryset': self.object_list,
             'user': self.creator,
             'output_type': self.output_type,
             'recipients': self.recipients.all(),
