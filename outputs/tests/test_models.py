@@ -6,7 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.http import QueryDict
 from unittest.mock import patch
 
-from outputs.models import Export, ExportItem, Scheduler, AbstractExport
+from outputs.models import Export, ExportItem, Scheduler
 from outputs.tests.models import SampleModel
 
 
