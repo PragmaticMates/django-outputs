@@ -212,7 +212,12 @@ class TestFilterExporterMixin:
             pass
 
         DummyMixin.filter_class = Mock(return_value=Mock())
-        mixin = DummyMixin(params={}, queryset=SampleModel.objects.all())
+        mixin = DummyMixin(
+            params={},
+            queryset=SampleModel.objects.all(),
+            user=None,
+            recipients=[],
+        )
         mixin.get_whole_queryset = Mock(return_value=SampleModel.objects.all())
 
         filter_obj = mixin.get_filter()
@@ -235,6 +240,8 @@ class TestFilterExporterMixin:
             params={},
             queryset=custom_queryset,
             filter_class=custom_filter_class,
+            user=None,
+            recipients=[],
         )
 
         assert mixin.queryset is custom_queryset
@@ -252,7 +259,12 @@ class TestFilterExporterMixin:
             pass
 
         DummyMixin.filter_class = Mock(return_value=Mock())
-        mixin = DummyMixin(params={}, queryset=SampleModel.objects.all())
+        mixin = DummyMixin(
+            params={},
+            queryset=SampleModel.objects.all(),
+            user=None,
+            recipients=[],
+        )
         mixin.filter = Mock()
         mixin.filter.qs = SampleModel.objects.all()
         mixin.items = None
@@ -270,7 +282,12 @@ class TestFilterExporterMixin:
             pass
 
         DummyMixin.filter_class = Mock(return_value=Mock())
-        mixin = DummyMixin(params={}, queryset=SampleModel.objects.all())
+        mixin = DummyMixin(
+            params={},
+            queryset=SampleModel.objects.all(),
+            user=None,
+            recipients=[],
+        )
         mixin.filter = Mock()
         mixin.filter.queryset = SampleModel.objects.all()
         mixin.items = [1, 2, 3]
@@ -288,7 +305,12 @@ class TestFilterExporterMixin:
             pass
 
         DummyMixin.filter_class = Mock(return_value=Mock())
-        mixin = DummyMixin(params={}, queryset=SampleModel.objects.all())
+        mixin = DummyMixin(
+            params={},
+            queryset=SampleModel.objects.all(),
+            user=None,
+            recipients=[],
+        )
         mixin.filter = Mock()
         # Avoid loading the real template with custom tags
         with patch('outputs.mixins.loader.get_template') as mock_get_template:

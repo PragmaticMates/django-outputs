@@ -34,7 +34,7 @@ class TestExport:
         params = export.exporter_params
         assert 'params' in params
         assert 'user' in params
-        assert 'items' in params
+        assert 'queryset' in params
         assert 'output_type' in params
         assert params['user'] == export.creator
 
