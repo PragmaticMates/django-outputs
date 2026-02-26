@@ -6,13 +6,6 @@ from pragmatic.utils import get_task_decorator
 
 from outputs.usecases import export_items
 
-try:
-    # older Django
-    from django.utils.translation import ugettext_lazy as _
-except ImportError:
-    # Django >= 3
-    from django.utils.translation import gettext_lazy as _
-
 logger = logging.getLogger(__name__)
 
 task = get_task_decorator("exports")

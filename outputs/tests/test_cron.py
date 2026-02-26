@@ -1,7 +1,7 @@
 """
 Tests for cron functions.
 """
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from outputs.models import Scheduler
 from outputs.cron import schedule_export

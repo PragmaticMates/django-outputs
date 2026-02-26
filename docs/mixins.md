@@ -6,19 +6,31 @@ All mixins live in `outputs.mixins`. Exporters are assembled by combining them; 
 
 ### `ExporterMixin`
 
-The base for every exporter. It initialises an in-memory `BytesIO` output stream and provides the scaffolding that the rest of the system depends on.
+The base for every exporter. It is **model-based**: every concrete exporter is tied to a Django model either through a class-level `queryset` (preferred) or an explicit `model` attribute. This lets the mixin automatically resolve the model for admin labels, widget metadata, content-type tracking in `save_export()`, and the auto-generated `description`.
+
+It also initialises an in-memory `BytesIO` output stream and provides the scaffolding that the rest of the system depends on.
 
 Class attributes to set on subclasses:
 
 | Attribute | Default | Description |
 |---|---|---|
+| `queryset` | `None` | Optional base queryset for the exporter; if set, its `.model` is used for metadata such as descriptions |
+| `model` | `None` | Optional Django model class; used when you don't have or don't want to keep a concrete queryset on the class |
 | `filename` | `None` | Output filename (accents are stripped automatically) |
-| `description` | `''` | Human-readable label shown in admin; auto-generated from model/format/context if empty |
+| `description` | `''` | Human-readable label shown in admin; if empty, a generic label is auto-generated from the resolved model, format and context |
 | `export_format` | `None` | One of `Export.FORMAT_XLSX`, `FORMAT_XML`, `FORMAT_PDF` |
 | `export_context` | `None` | One of `Export.CONTEXT_LIST`, `CONTEXT_STATISTICS`, `CONTEXT_DETAIL` |
 | `output_type` | `FILE` | `Export.OUTPUT_TYPE_FILE` or `OUTPUT_TYPE_STREAM` |
 | `send_separately` | `False` | Send one email per recipient instead of a single email to all |
 | `content_type` | `application/force-download` | HTTP content-type / MIME type of the output |
+
+`ExporterMixin.get_model()` returns either `queryset.model` (when a queryset is defined) or the explicit `model` attribute. `get_app_and_model()` then exposes the resolved app label and model name for use in widgets and admin filters. `get_description()` uses the same resolution logic to build a generic label:
+
+```python
+f"{cls.__name__} ({model_name}, {export_format}, {export_context})"
+```
+
+unless you override `description` on the subclass, in which case that string is used verbatim.
 
 Key methods to implement or override:
 
@@ -33,15 +45,15 @@ Key methods to implement or override:
 
 ### `FilterExporterMixin`
 
-Adds [django-filter](https://django-filter.readthedocs.io/) support so the exported queryset matches whatever filters the user applied in the UI.
+Inherits from `ExporterMixin` and adds [django-filter](https://django-filter.readthedocs.io/) support so the exported queryset matches whatever filters the user applied in the UI. Because it extends `ExporterMixin` directly, it already carries the model-resolution logic: the `queryset` set on the subclass is used both to initialise the filter and as the model source for `get_model()`, `get_description()`, and `save_export()`.
 
 Class attributes:
 
 | Attribute | Description |
 |---|---|
-| `queryset` | Base queryset for the model being exported |
+| `queryset` | Base queryset for the model being exported (also used by `ExporterMixin.get_model()` if defined) |
 | `filter_class` | A `django_filters.FilterSet` subclass |
-| `model` | Alternative to `queryset` when only a model reference is needed |
+| `model` | Optional explicit model reference when you don't want to keep a queryset on the class |
 
 Both `queryset` and `filter_class` can be overridden at instantiation time by passing them as keyword arguments, which lets a single exporter class serve multiple filtered views:
 
@@ -158,6 +170,8 @@ Useful methods if you need to manipulate permissions programmatically:
 
 ## Building an exporter
 
+Every exporter is **model-based**. Setting `queryset` (or `model`) on the class is the first step; the mixin uses it to track the content type, build `save_export()` records, populate admin/widget labels, and (when combined with `FilterExporterMixin`) seed the django-filter queryset.
+
 A typical XLSX list exporter combining `FilterExporterMixin` and `ExcelExporterMixin`:
 
 ```python
@@ -171,10 +185,11 @@ class OrderFilter(django_filters.FilterSet):
         fields = ['status', 'created']
 
 class OrderExporter(FilterExporterMixin, ExcelExporterMixin):
-    filename = 'orders.xlsx'
-    description = 'Orders export'
+    # model-based: queryset drives get_model(), get_description(), and the filter
     queryset = Order.objects.all()
     filter_class = OrderFilter
+    filename = 'orders.xlsx'
+    description = 'Orders export'  # optional; auto-generated from queryset.model if omitted
 
     def get_worksheet_title(self, index=0):
         return 'Orders'

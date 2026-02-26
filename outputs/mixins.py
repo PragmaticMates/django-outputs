@@ -336,7 +336,8 @@ class ExporterMixin(object):
         return response
 
     def get_message_body(self, count, file_url=None):
-        raise NotImplementedError()
+        template = loader.get_template('outputs/export_message_body.html')
+        return template.render({'count': count})
 
     def get_message_subject(self):
         return None
