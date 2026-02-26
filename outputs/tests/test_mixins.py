@@ -332,6 +332,21 @@ class TestExporterMixin:
         assert Export.CONTEXT_LIST in desc
         assert desc.endswith(')')
 
+    def test_exporter_mixin_get_description_generic_model_attr(self):
+        """Test generic description generation when only model is defined."""
+        class TestExporter(ExporterMixin):
+            model = SampleModel
+            export_format = Export.FORMAT_XLSX
+            export_context = Export.CONTEXT_LIST
+
+        desc = TestExporter.get_description()
+        # Should generate a generic label using the model attribute
+        assert desc.startswith('TestExporter (')
+        assert 'SampleModel' in desc
+        assert Export.FORMAT_XLSX in desc
+        assert Export.CONTEXT_LIST in desc
+        assert desc.endswith(')')
+
     def test_exporter_mixin_get_description_generic_no_model(self):
         """Test generic description when model cannot be determined."""
         class TestExporter(ExporterMixin):
