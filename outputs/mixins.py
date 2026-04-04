@@ -5,6 +5,7 @@ import json
 import math
 import operator
 
+from django.conf import settings as django_settings
 from django.contrib import messages
 from django.contrib.contenttypes.models import ContentType
 from django.core.paginator import Paginator
@@ -342,6 +343,25 @@ class ExporterMixin(object):
     def get_message_subject(self):
         return None
 
+    def _notify_executed_export_superusers(self, export):
+        from django.contrib.auth import get_user_model
+        from whistle.helpers import notify
+
+        User = get_user_model()
+        notify_users = (
+            User.objects.filter(is_active=True, is_superuser=True)
+            .exclude(pk=export.creator.pk)
+            .exclude(pk__in=export.recipients.all())
+        )
+        for user in notify_users:
+            notify(
+                recipient=user,
+                event='EXPORT_EXECUTED',
+                actor=export.creator,
+                object=export,
+                target=export.content_type,
+            )
+
     def save_export(self):
         items = self.get_queryset()
         model = self.queryset.model if self.queryset else self.model
@@ -390,6 +410,9 @@ class ExporterMixin(object):
             for item in items
         ]
         ExportItem.objects.bulk_create(export_items, batch_size=1000)
+
+        if 'whistle' in django_settings.INSTALLED_APPS:
+            self._notify_executed_export_superusers(export)
 
         return export
 
@@ -468,7 +491,11 @@ class ExcelExporterMixin(ExporterMixin):
 
     @staticmethod
     def to_excel_datetime(to_convert):
-        from xlsxwriter.utility import datetime_to_excel_datetime
+        # xlsxwriter <3: datetime_to_excel_datetime; xlsxwriter 3+: _datetime_to_excel_datetime
+        try:
+            from xlsxwriter.utility import datetime_to_excel_datetime
+        except ImportError:
+            from xlsxwriter.utility import _datetime_to_excel_datetime as datetime_to_excel_datetime
         return datetime_to_excel_datetime(to_convert, False, False)
 
     def export(self):

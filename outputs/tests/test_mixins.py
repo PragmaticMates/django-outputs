@@ -486,6 +486,34 @@ class TestExporterMixin:
         # Check that fields are saved
         assert export.fields == ['name', 'email']
 
+    def test_save_export_whistle_notifies_superusers(self, user, settings):
+        """With whistle installed, superuser notification runs after export and items are saved."""
+        settings.INSTALLED_APPS = list(settings.INSTALLED_APPS) + ['whistle']
+        from django.contrib.contenttypes.models import ContentType
+
+        exporter = ExporterMixin(user=user, recipients=[user])
+        exporter.queryset = SampleModel.objects.all()
+        exporter.export_format = Export.FORMAT_XLSX
+        exporter.export_context = Export.CONTEXT_LIST
+        exporter.params = QueryDict('')
+        exporter.selected_fields = None
+        exporter.url = '/test/'
+
+        def get_queryset():
+            return exporter.queryset
+
+        exporter.get_queryset = get_queryset
+
+        content_type, _ = ContentType.objects.get_or_create(app_label='outputs', model='samplemodel')
+        SampleModel.objects.create(name='Test', email='test@example.com')
+
+        with patch('outputs.mixins.ContentType.objects.get_for_model', return_value=content_type):
+            with patch.object(ExporterMixin, '_notify_executed_export_superusers') as mock_notify:
+                exporter.save_export()
+        mock_notify.assert_called_once()
+        export_arg = mock_notify.call_args[0][1]
+        assert export_arg.items.count() == 1
+
 
 class TestExcelExporterMixin:
     """Tests for ExcelExporterMixin."""

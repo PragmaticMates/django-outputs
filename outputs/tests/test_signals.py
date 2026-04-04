@@ -4,51 +4,9 @@ Tests for signals.
 from django.contrib.contenttypes.models import ContentType
 from unittest.mock import Mock, MagicMock, patch
 
-from outputs.models import Export, Scheduler, ExportItem
+from outputs.models import Scheduler, ExportItem
 from outputs.signals import export_item_changed
 from outputs.tests.models import SampleModel
-
-
-class TestExportExecutedPostSave:
-    """Tests for export_executed_post_save signal."""
-
-    def test_export_executed_post_save_signal(self, export, mock_rq_queue):
-        """Test signal on export creation."""
-        with patch('outputs.signals.django_rq.get_scheduler') as mock_scheduler:
-            mock_sched = Mock()
-            mock_sched.enqueue_in = Mock()
-            mock_scheduler.return_value = mock_sched
-            
-            # Create new export to trigger signal
-            new_export = Export.objects.create(
-                content_type=export.content_type,
-                format=export.format,
-                context=export.context,
-                creator=export.creator,
-                total=5
-            )
-            
-            # Signal should schedule notification
-            # Note: This test may need adjustment based on actual signal implementation
-
-    def test_export_executed_post_save_notification(self, export, mock_rq_queue, settings):
-        """Test notification scheduling."""
-        with patch('outputs.signals.settings.INSTALLED_APPS', ['outputs', 'whistle']):
-            with patch('outputs.signals.django_rq.get_scheduler') as mock_scheduler:
-                mock_sched = Mock()
-                mock_sched.enqueue_in = Mock()
-                mock_scheduler.return_value = mock_sched
-                
-                Export.objects.create(
-                    content_type=export.content_type,
-                    format=export.format,
-                    context=export.context,
-                    creator=export.creator,
-                    total=5
-                )
-                
-                # Check that scheduler was called
-                # Note: This depends on signal implementation
 
 
 class TestRescheduleScheduler:
