@@ -30,6 +30,9 @@ INSTALLED_APPS = [
     'outputs',
 ]
 
+# pragmatic>=4.1 defaults to django.tasks.task (Django 5.2+). Tests use Django 4.x + RQ.
+PRAGMATIC_TASK_DECORATOR = 'django_rq.job'
+
 # Middleware
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
