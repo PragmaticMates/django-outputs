@@ -11,7 +11,7 @@ from outputs.jobs import mail_export_by_id
 class TestMailExportById:
     """Tests for mail_export_by_id job."""
 
-    def test_mail_export_by_id_success(self, export, mock_rq_queue):
+    def test_mail_export_by_id_success(self, export):
         """Test successful job execution."""
         with patch('outputs.jobs.import_string') as mock_import:
             mock_import.return_value = Export
@@ -25,7 +25,7 @@ class TestMailExportById:
                 )
                 assert mock_export_items.called
 
-    def test_mail_export_by_id_failure(self, export, mock_rq_queue):
+    def test_mail_export_by_id_failure(self, export):
         """Test job failure."""
         with patch('outputs.jobs.import_string') as mock_import:
             mock_import.return_value = Export
@@ -38,7 +38,7 @@ class TestMailExportById:
                         'en'
                     )
 
-    def test_mail_export_by_id_status_update(self, export, mock_rq_queue):
+    def test_mail_export_by_id_status_update(self, export):
         """Test status update."""
         with patch('outputs.jobs.import_string') as mock_import:
             mock_import.return_value = Export
@@ -54,7 +54,7 @@ class TestMailExportById:
                 # Status should be updated to PROCESSING
                 assert export.status == Export.STATUS_PROCESSING
 
-    def test_mail_export_by_id_language(self, export, mock_rq_queue):
+    def test_mail_export_by_id_language(self, export):
         """Test language activation."""
         with patch('outputs.jobs.import_string') as mock_import:
             mock_import.return_value = Export

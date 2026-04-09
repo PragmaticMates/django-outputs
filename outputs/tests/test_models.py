@@ -101,15 +101,19 @@ class TestExport:
         app_label = export.get_app_label()
         assert isinstance(app_label, str)
 
-    def test_export_send_mail(self, export, mock_rq_queue):
-        """Test send_mail method."""
+    def test_export_send_mail(self, export):
+        """Test send_mail dispatches the decorated job via task_dispatch (delay/enqueue/…)."""
         import sys
-        from unittest.mock import MagicMock
+        from unittest.mock import MagicMock, Mock
+
+        mock_task = Mock()
+        mock_task.delay = Mock()
+        mock_task.enqueue = None
+        mock_task.apply_async = None
 
         mock_jobs = MagicMock()
-        mock_jobs.mail_export_by_id.delay = MagicMock()
+        mock_jobs.mail_export_by_id = mock_task
 
-        # Patch outputs module import to provide jobs attribute
         original_outputs = sys.modules.get('outputs')
         mock_outputs = MagicMock()
         mock_outputs.jobs = mock_jobs
@@ -120,7 +124,11 @@ class TestExport:
             if original_outputs:
                 sys.modules['outputs'] = original_outputs
 
-        assert mock_jobs.mail_export_by_id.delay.called
+        mock_task.delay.assert_called_once()
+        call_args = mock_task.delay.call_args[0]
+        assert call_args[0] == export.pk
+        assert call_args[1].endswith('.Export')
+        assert call_args[2] == 'en'
 
     def test_export_object_list(self, export, test_model):
         """Test object_list property."""
@@ -319,11 +327,15 @@ class TestScheduler:
         assert scheduler.job_id != ''
 
     def test_scheduler_cancel_schedule(self, scheduler, mock_rq_queue):
-        """Test canceling schedule."""
+        """Test canceling schedule deletes the RQ job; job_id on the model is unchanged."""
         scheduler.job_id = 'test-job-id'
+        rq_job = scheduler.job
+        assert rq_job is not None
+
         scheduler.cancel_schedule()
-        # Job should be deleted
-        assert scheduler.job_id == 'test-job-id'  # ID remains, but job is deleted
+
+        rq_job.delete.assert_called_once()
+        assert scheduler.job_id == 'test-job-id'
 
     def test_scheduler_is_scheduled(self, scheduler, mock_rq_queue):
         """Test is_scheduled property."""

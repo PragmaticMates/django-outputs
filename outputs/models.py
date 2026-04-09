@@ -15,14 +15,12 @@ from django.template import Context, Template
 from django.urls import reverse, NoReverseMatch, resolve, Resolver404
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _, get_language
-from pytz import timezone
-from rq.exceptions import NoSuchJobError
-from rq.job import Job
 
 if 'auditlog' in settings.INSTALLED_APPS:
     from auditlog.models import AuditlogHistoryField
 
 from outputs import settings as outputs_settings
+from outputs import task_dispatch
 from outputs.cron import schedule_export
 from outputs.querysets import ExportQuerySet, SchedulerQuerySet, ExportItemQuerySet
 
@@ -280,8 +278,15 @@ class Export(AbstractExport):
 
     def send_mail(self, language, filename=None):
         from outputs import jobs
+
         export_class_name = f'{self.__class__.__module__}.{self.__class__.__name__}'
-        jobs.mail_export_by_id.delay(self.pk, export_class_name, language, filename)
+        task_dispatch.dispatch_task(
+            jobs.mail_export_by_id,
+            self.pk,
+            export_class_name,
+            language,
+            filename,
+        )
 
     @property
     def object_list(self):
@@ -473,6 +478,10 @@ class Scheduler(AbstractExport):
         if self.job_id in EMPTY_VALUES:
             return None
 
+        import django_rq
+        from rq.exceptions import NoSuchJobError
+        from rq.job import Job
+
         queue = django_rq.get_queue('cron')
 
         try:
@@ -484,6 +493,9 @@ class Scheduler(AbstractExport):
     def schedule_time(self):
         if not self.is_scheduled:
             return None
+
+        import django_rq
+        from pytz import timezone
 
         # get all scheduled jobs
         scheduler = django_rq.get_scheduler('cron')
@@ -529,6 +541,7 @@ class Scheduler(AbstractExport):
 
         if self.is_active:
             # schedule cronjob for active scheduler and save its ID
+            import django_rq
             scheduler = django_rq.get_scheduler('cron')
 
             # schedule export as cron job
