@@ -518,7 +518,7 @@ class TestExporterMixin:
                 with patch.object(ExporterMixin, '_notify_executed_export_superusers') as mock_notify:
                     exporter.save_export()
         mock_notify.assert_called_once()
-        export_arg = mock_notify.call_args[0][1]
+        export_arg = mock_notify.call_args[0][0]
         assert export_arg.items.count() == 1
 
 
