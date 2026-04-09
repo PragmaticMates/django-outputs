@@ -1,6 +1,8 @@
 """
 Tests for mixins.
 """
+from types import SimpleNamespace
+
 import pytest
 from unittest.mock import Mock, patch
 from django.http import QueryDict
@@ -486,10 +488,10 @@ class TestExporterMixin:
         # Check that fields are saved
         assert export.fields == ['name', 'email']
 
-    def test_save_export_whistle_notifies_superusers(self, user, settings):
+    def test_save_export_whistle_notifies_superusers(self, user):
         """With whistle installed, superuser notification runs after export and items are saved."""
-        settings.INSTALLED_APPS = list(settings.INSTALLED_APPS) + ['whistle']
         from django.contrib.contenttypes.models import ContentType
+        from django.conf import settings as django_settings
 
         exporter = ExporterMixin(user=user, recipients=[user])
         exporter.queryset = SampleModel.objects.all()
@@ -507,9 +509,14 @@ class TestExporterMixin:
         content_type, _ = ContentType.objects.get_or_create(app_label='outputs', model='samplemodel')
         SampleModel.objects.create(name='Test', email='test@example.com')
 
+        whistle_settings = SimpleNamespace(
+            INSTALLED_APPS=list(django_settings.INSTALLED_APPS) + ['whistle'],
+        )
+
         with patch('outputs.mixins.ContentType.objects.get_for_model', return_value=content_type):
-            with patch.object(ExporterMixin, '_notify_executed_export_superusers') as mock_notify:
-                exporter.save_export()
+            with patch('outputs.mixins.django_settings', whistle_settings):
+                with patch.object(ExporterMixin, '_notify_executed_export_superusers') as mock_notify:
+                    exporter.save_export()
         mock_notify.assert_called_once()
         export_arg = mock_notify.call_args[0][1]
         assert export_arg.items.count() == 1
