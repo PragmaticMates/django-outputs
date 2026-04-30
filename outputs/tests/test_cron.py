@@ -5,44 +5,59 @@ from unittest.mock import patch
 
 from outputs.models import Scheduler
 from outputs.cron import schedule_export
+from outputs.jobs import execute_export
 
 
 class TestScheduleExport:
     """Tests for schedule_export function."""
 
-    def test_schedule_export_calls_execute_export(self, scheduler, mock_rq_queue):
-        """Test that schedule_export calls execute_export with correct arguments."""
+    def test_schedule_export_uses_dispatch_task(self, scheduler, mock_rq_queue):
+        """schedule_export must use dispatch_task, not execute_export.delay."""
         with patch('outputs.cron.import_string') as mock_import, \
-             patch('outputs.usecases.execute_export') as mock_execute:
+             patch('outputs.cron.dispatch_task') as mock_dispatch, \
+             patch('outputs.cron.serialize_exporter_params', return_value={}) as mock_serialize:
             mock_import.return_value = Scheduler
 
             schedule_export(scheduler.pk, 'outputs.models.Scheduler')
 
-            mock_execute.assert_called_once()
-            call_kwargs = mock_execute.call_args.kwargs
-            assert call_kwargs['language'] == scheduler.language
+        mock_dispatch.assert_called_once()
+        # First arg must be the execute_export job function
+        assert mock_dispatch.call_args[0][0] is execute_export
+        assert mock_dispatch.call_args[0][1] == scheduler.exporter_class.get_path()
 
-    def test_schedule_export_passes_exporter_instance(self, scheduler, mock_rq_queue):
-        """Test that schedule_export passes an exporter instance (not class) to execute_export."""
+    def test_schedule_export_serializes_exporter_params(self, scheduler, mock_rq_queue):
+        """schedule_export must call serialize_exporter_params before dispatching."""
         with patch('outputs.cron.import_string') as mock_import, \
-             patch('outputs.usecases.execute_export') as mock_execute:
+             patch('outputs.cron.dispatch_task'), \
+             patch('outputs.cron.serialize_exporter_params', return_value={}) as mock_serialize:
             mock_import.return_value = Scheduler
 
             schedule_export(scheduler.pk, 'outputs.models.Scheduler')
 
-            exporter_arg = mock_execute.call_args.args[0]
-            # Should be an instance, not a class
-            assert not isinstance(exporter_arg, type)
+        mock_serialize.assert_called_once_with(scheduler.exporter_params)
+
+    def test_schedule_export_passes_language(self, scheduler, mock_rq_queue):
+        """Language from the scheduler is forwarded as a kwarg to dispatch_task."""
+        with patch('outputs.cron.import_string') as mock_import, \
+             patch('outputs.cron.dispatch_task') as mock_dispatch, \
+             patch('outputs.cron.serialize_exporter_params', return_value={}):
+            mock_import.return_value = Scheduler
+
+            schedule_export(scheduler.pk, 'outputs.models.Scheduler')
+
+        call_kwargs = mock_dispatch.call_args[1]
+        assert call_kwargs.get('language') == scheduler.language
 
     def test_schedule_export_updates_executions(self, scheduler, mock_rq_queue):
-        """Test that executions list is updated after export."""
-        initial_executions_count = len(scheduler.executions)
+        """Executions list is appended to after dispatching."""
+        initial_count = len(scheduler.executions)
 
         with patch('outputs.cron.import_string') as mock_import, \
-             patch('outputs.usecases.execute_export'):
+             patch('outputs.cron.dispatch_task'), \
+             patch('outputs.cron.serialize_exporter_params', return_value={}):
             mock_import.return_value = Scheduler
 
             schedule_export(scheduler.pk, 'outputs.models.Scheduler')
 
-            scheduler.refresh_from_db()
-            assert len(scheduler.executions) == initial_executions_count + 1
+        scheduler.refresh_from_db()
+        assert len(scheduler.executions) == initial_count + 1

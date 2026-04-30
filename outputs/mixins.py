@@ -15,7 +15,8 @@ from django.template import loader
 from django.utils import translation
 from django.utils.timezone import localtime
 
-from outputs.usecases import execute_export
+from outputs.jobs import execute_export
+from outputs.utils import serialize_exporter_params
 
 try:
     # older Django
@@ -24,6 +25,7 @@ except ImportError:
     # Django >= 3
     from django.utils.translation import gettext_lazy as _
 
+from pragmatic.utils import dispatch_task
 from pragmatic.templatetags.pragmatic_tags import filtered_values
 from outputs import settings
 from outputs.forms import ChooseExportFieldsForm, ConfirmExportForm
@@ -151,7 +153,12 @@ class ConfirmExportMixin(object):
         return self.exporter_class(**self.exporter_params)
 
     def export(self):
-        execute_export(self.get_exporter(), language=translation.get_language())
+        dispatch_task(
+            execute_export,
+            self.exporter_class.get_path(),
+            serialize_exporter_params(self.exporter_params),
+            language=translation.get_language(),
+        )
 
     def get_objects_count(self):
         return self.get_exporter().get_queryset().count()

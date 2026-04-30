@@ -4,7 +4,7 @@ Tests for mixins.
 from types import SimpleNamespace
 
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, PropertyMock, patch
 from django.http import QueryDict
 
 from outputs.mixins import (
@@ -128,13 +128,25 @@ class TestConfirmExportMixin:
         assert count == 10
 
     def test_confirm_export_mixin_export(self):
-        """Test export execution."""
+        """Test that export() uses dispatch_task with serialized params."""
         mixin = ConfirmExportMixin()
-        mixin.get_exporter = Mock(return_value=Mock())
-        
-        with patch('outputs.mixins.execute_export') as mock_execute:
+        mixin.exporter_class = Mock()
+        mixin.exporter_class.get_path.return_value = 'outputs.tests.MockExporter'
+        params = {'user': None, 'recipients': [], 'filename': 'out.xlsx'}
+
+        with patch('outputs.mixins.dispatch_task') as mock_dispatch, \
+             patch('outputs.mixins.serialize_exporter_params', return_value={'user_id': None, 'recipient_ids': []}) as mock_serialize, \
+             patch('outputs.mixins.translation') as mock_translation, \
+             patch.object(type(mixin), 'exporter_params', new_callable=PropertyMock, return_value=params):
+            mock_translation.get_language.return_value = 'en'
             mixin.export()
-            assert mock_execute.called
+
+        mock_serialize.assert_called_once_with(params)
+        mock_dispatch.assert_called_once()
+        # First positional arg to dispatch_task must be execute_export (the job function)
+        from outputs.jobs import execute_export
+        assert mock_dispatch.call_args[0][0] is execute_export
+        assert mock_dispatch.call_args[0][1] == 'outputs.tests.MockExporter'
 
     def test_confirm_export_mixin_form_valid(self):
         """Test form validation."""

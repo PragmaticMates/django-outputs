@@ -20,10 +20,10 @@ if 'auditlog' in settings.INSTALLED_APPS:
     from auditlog.models import AuditlogHistoryField
 
 from outputs import settings as outputs_settings
-from outputs import task_dispatch
 from outputs.cron import schedule_export
 from outputs.querysets import ExportQuerySet, SchedulerQuerySet, ExportItemQuerySet
 
+from pragmatic.utils import dispatch_task
 from pragmatic.templatetags.pragmatic_tags import filtered_values
 
 
@@ -280,7 +280,7 @@ class Export(AbstractExport):
         from outputs import jobs
 
         export_class_name = f'{self.__class__.__module__}.{self.__class__.__name__}'
-        task_dispatch.dispatch_task(
+        dispatch_task(
             jobs.mail_export_by_id,
             self.pk,
             export_class_name,

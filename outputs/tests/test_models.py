@@ -102,33 +102,18 @@ class TestExport:
         assert isinstance(app_label, str)
 
     def test_export_send_mail(self, export):
-        """Test send_mail dispatches the decorated job via task_dispatch (delay/enqueue/…)."""
-        import sys
-        from unittest.mock import MagicMock, Mock
-
-        mock_task = Mock()
-        mock_task.delay = Mock()
-        mock_task.enqueue = None
-        mock_task.apply_async = None
-
-        mock_jobs = MagicMock()
-        mock_jobs.mail_export_by_id = mock_task
-
-        original_outputs = sys.modules.get('outputs')
-        mock_outputs = MagicMock()
-        mock_outputs.jobs = mock_jobs
-        sys.modules['outputs'] = mock_outputs
-        try:
+        """Test send_mail dispatches the decorated job via dispatch_task."""
+        from outputs import jobs
+        with patch('outputs.models.dispatch_task') as mock_dispatch:
             export.send_mail(language='en')
-        finally:
-            if original_outputs:
-                sys.modules['outputs'] = original_outputs
-
-        mock_task.delay.assert_called_once()
-        call_args = mock_task.delay.call_args[0]
-        assert call_args[0] == export.pk
-        assert call_args[1].endswith('.Export')
-        assert call_args[2] == 'en'
+            
+            mock_dispatch.assert_called_once_with(
+                jobs.mail_export_by_id,
+                export.pk,
+                f'{export.__class__.__module__}.{export.__class__.__name__}',
+                'en',
+                None
+            )
 
     def test_export_object_list(self, export, test_model):
         """Test object_list property."""
