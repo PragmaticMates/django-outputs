@@ -13,7 +13,8 @@ psycopg2-binary  # PostgreSQL driver for tests
 # Django extensions
 django-rq
 django-crispy-forms
-django-pragmatic>=4.1.0
+#django-pragmatic>=4.1.0
+-e git+https://github.com/soltys-m/django-pragmatic.git@08befea27246ecb56bc725dcd443052d7df3bd10#egg=django-pragmatic
 django-whistle>=7.0.0
 django-select2
 django-gm2m  # Required for historical migrations (not used in code)
