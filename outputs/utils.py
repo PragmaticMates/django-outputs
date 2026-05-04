@@ -57,13 +57,16 @@ def deserialize_exporter_params(params: dict) -> dict:
     deserialized = dict(params)
     User = get_user_model()
 
-    # user
-    user_id = deserialized.pop('user_id', None)
-    deserialized['user'] = User.objects.get(pk=user_id) if user_id is not None else None
+    # user — only swap when the serialized form is present (user_id key exists)
+    if 'user_id' in deserialized:
+        user_id = deserialized.pop('user_id')
+        deserialized['user'] = User.objects.get(pk=user_id) if user_id is not None else None
 
-    # recipients
-    recipient_ids = deserialized.pop('recipient_ids', [])
-    deserialized['recipients'] = list(User.objects.filter(pk__in=recipient_ids))
+    # recipients — only swap when the serialized form is present
+    if 'recipient_ids' in deserialized:
+        recipient_ids = deserialized.pop('recipient_ids')
+        deserialized['recipients'] = list(User.objects.filter(pk__in=recipient_ids))
+
 
     # queryset — only reconstruct when keys are present
     if 'queryset_ids' in deserialized and 'queryset_model' in deserialized:
@@ -71,7 +74,13 @@ def deserialize_exporter_params(params: dict) -> dict:
         queryset_model = deserialized.pop('queryset_model')
         app_label, model_name = queryset_model.split('.')
         model = apps.get_model(app_label, model_name)
-        deserialized['queryset'] = model.objects.filter(pk__in=queryset_ids)
+        # Preserve the original order of queryset_ids using Case/When
+        from django.db.models import Case, IntegerField, Value, When
+        preserved_order = Case(
+            *[When(pk=pk, then=Value(i)) for i, pk in enumerate(queryset_ids)],
+            output_field=IntegerField(),
+        )
+        deserialized['queryset'] = model.objects.filter(pk__in=queryset_ids).order_by(preserved_order)
     # If the keys are absent, 'queryset' is simply not included in the result.
 
     return deserialized

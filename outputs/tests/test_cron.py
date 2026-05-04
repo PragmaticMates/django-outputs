@@ -27,6 +27,10 @@ class TestScheduleExport:
 
     def test_schedule_export_serializes_exporter_params(self, scheduler, mock_rq_queue):
         """schedule_export must call serialize_exporter_params before dispatching."""
+        # Snapshot exporter_params before calling schedule_export so we compare against
+        # the same dict/QuerySet instances that were passed to serialize_exporter_params.
+        expected_params = scheduler.exporter_params
+
         with patch('outputs.cron.import_string') as mock_import, \
              patch('outputs.cron.dispatch_task'), \
              patch('outputs.cron.serialize_exporter_params', return_value={}) as mock_serialize:
@@ -34,7 +38,13 @@ class TestScheduleExport:
 
             schedule_export(scheduler.pk, 'outputs.models.Scheduler')
 
-        mock_serialize.assert_called_once_with(scheduler.exporter_params)
+        mock_serialize.assert_called_once()
+        actual_params = mock_serialize.call_args[0][0]
+        # Compare field by field to avoid QuerySet identity issues
+        assert actual_params['user'] == expected_params['user']
+        assert list(actual_params['recipients']) == list(expected_params['recipients'])
+        assert actual_params['selected_fields'] == expected_params['selected_fields']
+        assert actual_params.get('send_separately') == expected_params.get('send_separately')
 
     def test_schedule_export_passes_language(self, scheduler, mock_rq_queue):
         """Language from the scheduler is forwarded as a kwarg to dispatch_task."""
