@@ -252,25 +252,47 @@ def mock_storage(monkeypatch):
 
 @pytest.fixture
 def mock_rq_queue(monkeypatch):
-    """Mock RQ queue."""
+    """
+    Mock django_rq APIs used inside model methods (get_queue, get_scheduler, Job.fetch).
+
+    Without patching ``Job.fetch``, ``Scheduler.job`` / ``cancel_schedule`` would talk to a
+    real Redis connection even when queues are faked.
+    """
     fake_redis = fakeredis.FakeStrictRedis()
-    
+    mock_cron_job = Mock()
+    mock_cron_job.id = 'test-job-id'
+
     def get_queue(name='default'):
         queue = Mock()
         queue.connection = fake_redis
         return queue
-    
+
     def get_scheduler(name='default'):
         scheduler = Mock()
         scheduler.get_jobs.return_value = []
-        scheduler.enqueue_in = Mock()
-        scheduler.cron = Mock(return_value=Mock(id='test-job-id'))
+        scheduler.cron.return_value = mock_cron_job
         return scheduler
-    
+
     monkeypatch.setattr('django_rq.get_queue', get_queue)
     monkeypatch.setattr('django_rq.get_scheduler', get_scheduler)
-    
-    return {'queue': get_queue(), 'scheduler': get_scheduler()}
+
+    # Same job_id must return the same mock so ``cancel_schedule``'s ``self.job.delete()``
+    # matches ``scheduler.job`` in tests.
+    _jobs_by_id = {}
+
+    def fake_job_fetch(cls, job_id, connection=None):
+        if job_id not in _jobs_by_id:
+            job = Mock()
+            job.id = job_id
+            job.delete = Mock()
+            _jobs_by_id[job_id] = job
+        return _jobs_by_id[job_id]
+
+    from rq.job import Job
+
+    monkeypatch.setattr(Job, 'fetch', classmethod(fake_job_fetch))
+
+    return {'queue': get_queue(), 'scheduler': get_scheduler(), 'cron_job': mock_cron_job}
 
 
 @pytest.fixture

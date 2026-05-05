@@ -7,37 +7,8 @@ from django.core import mail
 from unittest.mock import Mock, patch
 
 from outputs.models import Export
-from outputs.usecases import execute_export, export_items, mail_successful_export, get_message
+from outputs.usecases import export_items, mail_successful_export, get_message
 from outputs.tests.models import SampleModel
-
-
-class TestExecuteExport:
-    """Tests for execute_export function."""
-
-    def test_execute_export_success(self, exporter_class, mock_storage, mock_email_backend):
-        """Test successful export execution."""
-        exporter = exporter_class(user=None, recipients=[])
-        mock_export = Mock(
-            id=1,
-            total=10,
-            send_mail=Mock()
-        )
-        exporter.save_export = Mock(return_value=mock_export)
-        exporter.get_filename = Mock(return_value='test.xlsx')
-        
-        execute_export(exporter, language='en')
-        assert exporter.save_export.called
-        assert mock_export.send_mail.called
-        # Check that send_mail was called with language and filename
-        mock_export.send_mail.assert_called_once_with('en', 'test.xlsx')
-
-    def test_execute_export_failure(self, exporter_class):
-        """Test export execution failure."""
-        exporter = exporter_class(user=None, recipients=[])
-        exporter.save_export = Mock(side_effect=Exception('Export failed'))
-        
-        with pytest.raises(Exception):
-            execute_export(exporter, language='en')
 
 
 class TestExportItems:

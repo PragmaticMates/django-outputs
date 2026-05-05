@@ -1,8 +1,10 @@
 """
 Tests for mixins.
 """
+from types import SimpleNamespace
+
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, PropertyMock, patch
 from django.http import QueryDict
 
 from outputs.mixins import (
@@ -126,13 +128,25 @@ class TestConfirmExportMixin:
         assert count == 10
 
     def test_confirm_export_mixin_export(self):
-        """Test export execution."""
+        """Test that export() uses dispatch_task with serialized params."""
         mixin = ConfirmExportMixin()
-        mixin.get_exporter = Mock(return_value=Mock())
-        
-        with patch('outputs.mixins.execute_export') as mock_execute:
+        mixin.exporter_class = Mock()
+        mixin.exporter_class.get_path.return_value = 'outputs.tests.MockExporter'
+        params = {'user': None, 'recipients': [], 'filename': 'out.xlsx'}
+
+        with patch('outputs.mixins.dispatch_task') as mock_dispatch, \
+             patch('outputs.mixins.serialize_exporter_params', return_value={'user_id': None, 'recipient_ids': []}) as mock_serialize, \
+             patch('outputs.mixins.translation') as mock_translation, \
+             patch.object(type(mixin), 'exporter_params', new_callable=PropertyMock, return_value=params):
+            mock_translation.get_language.return_value = 'en'
             mixin.export()
-            assert mock_execute.called
+
+        mock_serialize.assert_called_once_with(params)
+        mock_dispatch.assert_called_once()
+        # First positional arg to dispatch_task must be execute_export (the job function)
+        from outputs.jobs import execute_export
+        assert mock_dispatch.call_args[0][0] is execute_export
+        assert mock_dispatch.call_args[0][1] == 'outputs.tests.MockExporter'
 
     def test_confirm_export_mixin_form_valid(self):
         """Test form validation."""
@@ -485,6 +499,39 @@ class TestExporterMixin:
         assert export.items.count() == 2
         # Check that fields are saved
         assert export.fields == ['name', 'email']
+
+    def test_save_export_whistle_notifies_superusers(self, user):
+        """With whistle installed, superuser notification runs after export and items are saved."""
+        from django.contrib.contenttypes.models import ContentType
+        from django.conf import settings as django_settings
+
+        exporter = ExporterMixin(user=user, recipients=[user])
+        exporter.queryset = SampleModel.objects.all()
+        exporter.export_format = Export.FORMAT_XLSX
+        exporter.export_context = Export.CONTEXT_LIST
+        exporter.params = QueryDict('')
+        exporter.selected_fields = None
+        exporter.url = '/test/'
+
+        def get_queryset():
+            return exporter.queryset
+
+        exporter.get_queryset = get_queryset
+
+        content_type, _ = ContentType.objects.get_or_create(app_label='outputs', model='samplemodel')
+        SampleModel.objects.create(name='Test', email='test@example.com')
+
+        whistle_settings = SimpleNamespace(
+            INSTALLED_APPS=list(django_settings.INSTALLED_APPS) + ['whistle'],
+        )
+
+        with patch('outputs.mixins.ContentType.objects.get_for_model', return_value=content_type):
+            with patch('outputs.mixins.django_settings', whistle_settings):
+                with patch.object(ExporterMixin, '_notify_executed_export_superusers') as mock_notify:
+                    exporter.save_export()
+        mock_notify.assert_called_once()
+        export_arg = mock_notify.call_args[0][0]
+        assert export_arg.items.count() == 1
 
 
 class TestExcelExporterMixin:

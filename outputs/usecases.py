@@ -21,19 +21,6 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-def execute_export(exporter, language):
-    try:
-        # save export to DB
-        export = exporter.save_export()
-        logger.info(f"Export created: export_id={export.id}, total_items={export.total}")
-
-        # send mail with export to recipients
-        export.send_mail(language, exporter.get_filename())
-    except Exception as e:
-        logger.error(f"Failed to execute export: exporter_class={exporter.__class__}, error={str(e)}", exc_info=True)
-        raise
-
-
 def export_items(export, language, filename=None):
     """
     Process export items and generate export file.

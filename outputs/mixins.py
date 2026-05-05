@@ -5,6 +5,7 @@ import json
 import math
 import operator
 
+from django.conf import settings as django_settings
 from django.contrib import messages
 from django.contrib.contenttypes.models import ContentType
 from django.core.paginator import Paginator
@@ -14,7 +15,8 @@ from django.template import loader
 from django.utils import translation
 from django.utils.timezone import localtime
 
-from outputs.usecases import execute_export
+from outputs.jobs import execute_export
+from outputs.utils import serialize_exporter_params
 
 try:
     # older Django
@@ -23,6 +25,7 @@ except ImportError:
     # Django >= 3
     from django.utils.translation import gettext_lazy as _
 
+from pragmatic.utils import dispatch_task
 from pragmatic.templatetags.pragmatic_tags import filtered_values
 from outputs import settings
 from outputs.forms import ChooseExportFieldsForm, ConfirmExportForm
@@ -150,7 +153,12 @@ class ConfirmExportMixin(object):
         return self.exporter_class(**self.exporter_params)
 
     def export(self):
-        execute_export(self.get_exporter(), language=translation.get_language())
+        dispatch_task(
+            execute_export,
+            self.exporter_class.get_path(),
+            serialize_exporter_params(self.exporter_params),
+            language=translation.get_language(),
+        )
 
     def get_objects_count(self):
         return self.get_exporter().get_queryset().count()
@@ -342,6 +350,25 @@ class ExporterMixin(object):
     def get_message_subject(self):
         return None
 
+    def _notify_executed_export_superusers(self, export):
+        from django.contrib.auth import get_user_model
+        from whistle.helpers import notify
+
+        User = get_user_model()
+        notify_users = (
+            User.objects.filter(is_active=True, is_superuser=True)
+            .exclude(pk=export.creator.pk)
+            .exclude(pk__in=export.recipients.all())
+        )
+        for user in notify_users:
+            notify(
+                recipient=user,
+                event='EXPORT_EXECUTED',
+                actor=export.creator,
+                object=export,
+                target=export.content_type,
+            )
+
     def save_export(self):
         items = self.get_queryset()
         model = self.queryset.model if self.queryset else self.model
@@ -390,6 +417,9 @@ class ExporterMixin(object):
             for item in items
         ]
         ExportItem.objects.bulk_create(export_items, batch_size=1000)
+
+        if 'whistle' in django_settings.INSTALLED_APPS:
+            self._notify_executed_export_superusers(export)
 
         return export
 
@@ -468,7 +498,11 @@ class ExcelExporterMixin(ExporterMixin):
 
     @staticmethod
     def to_excel_datetime(to_convert):
-        from xlsxwriter.utility import datetime_to_excel_datetime
+        # xlsxwriter <3: datetime_to_excel_datetime; xlsxwriter 3+: _datetime_to_excel_datetime
+        try:
+            from xlsxwriter.utility import datetime_to_excel_datetime
+        except ImportError:
+            from xlsxwriter.utility import _datetime_to_excel_datetime as datetime_to_excel_datetime
         return datetime_to_excel_datetime(to_convert, False, False)
 
     def export(self):
