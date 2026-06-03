@@ -17,14 +17,33 @@ except ImportError:
     # Django >= 3
     from django.utils.translation import gettext_lazy as _
 
-
 logger = logging.getLogger(__name__)
+
+
+def resolve_export_filename(exporter, filename=None):
+    """
+    Resolve the final filename for an export after exporter.export() has run.
+
+    Priority:
+    1. Runtime filename — if the exporter mutated its filename during export()
+       (e.g. single PDF instead of a zip archive), that always wins.
+    2. Custom filename — explicitly provided by the caller (e.g. from a form field).
+    3. Class default — fallback when nothing else changed.
+    """
+    runtime_filename = exporter.get_filename()
+    default_filename = getattr(exporter.__class__, 'filename', None)
+    default_filename = str(default_filename) if default_filename is not None else None
+
+    if runtime_filename != default_filename:
+        return runtime_filename
+
+    return filename or runtime_filename
 
 
 def export_items(export, language, filename=None):
     """
     Process export items and generate export file.
-    
+
     Uses database transactions to ensure data consistency.
     Updates ExportItem status based on export success/failure.
     """
@@ -53,6 +72,10 @@ def export_items(export, language, filename=None):
             logger.info(
                 f"Updated {updated_count} ExportItem records to SUCCESS for export_id={export.id}"
             )
+        # exporter.export() may override the filename at runtime (e.g. a single
+        # PDF instead of a zip archive), so resolve it here where the live
+        # exporter instance is still available, then thread it downstream.
+        filename = resolve_export_filename(exporter, filename)
         mail_successful_export(export, filename, exporter.get_output())
     except Exception as e:
         with transaction.atomic():
@@ -64,7 +87,7 @@ def export_items(export, language, filename=None):
             )
         notify_about_failed_export(export, str(e))
         raise
-           
+
 
 def notify_about_failed_export(export, error_detail):
     logger.error(
@@ -99,7 +122,7 @@ def mail_successful_export(export, filename=None, output_file=None):
 
     if outputs_settings.SAVE_AS_FILE:
         # Save the export using Django's default storage
-        output_filename = filename or exporter.get_filename()
+        output_filename = filename
         file_path = f'exports/{output_filename}'
 
         # Save the file using default storage
@@ -173,7 +196,7 @@ def get_message(exporter, count, recipient_list, subject, output_file=None, file
     if count > 0 and file_url is None:
         # get the stream and set the correct mimetype
         message.attach(
-            filename or exporter.get_filename(),
+            filename,
             output_file or exporter.get_output(),
             exporter.content_type
         )
