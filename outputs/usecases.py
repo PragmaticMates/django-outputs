@@ -37,7 +37,7 @@ def resolve_export_filename(exporter, filename=None):
     if runtime_filename != default_filename:
         return runtime_filename
 
-    return filename or runtime_filename
+    return filename or default_filename
 
 
 def export_items(export, language, filename=None):
