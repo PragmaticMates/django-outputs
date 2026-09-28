@@ -28,3 +28,16 @@ class SampleModel(models.Model):
             # If URL doesn't exist, return a simple path
             return f'/samplemodel/{self.pk}/'
 
+
+class SampleRelatedModel(models.Model):
+    """Related test model for testing exports of iterative sets."""
+    sample = models.ForeignKey(SampleModel, on_delete=models.CASCADE)
+    label = models.CharField(max_length=100)
+
+    class Meta:
+        app_label = 'outputs'
+        verbose_name = 'Sample Related Model'
+        verbose_name_plural = 'Sample Related Models'
+
+    def __str__(self):
+        return self.label

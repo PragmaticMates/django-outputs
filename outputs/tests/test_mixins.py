@@ -12,7 +12,7 @@ from outputs.mixins import (
     FilterExporterMixin, ExporterMixin, ExcelExporterMixin
 )
 from outputs.models import Export
-from outputs.tests.models import SampleModel
+from outputs.tests.models import SampleModel, SampleRelatedModel
 
 
 class TestExportFieldsPermissionsMixin:
@@ -609,6 +609,61 @@ class TestExcelExporterMixin:
             fields, iterative = exporter.get_selected_fields(exporter.get_queryset())
             assert len(fields) == 1
             assert fields[0][0] == 'name'
+
+    def test_excel_exporter_mixin_get_selected_fields_empty_iterative_set(self):
+        """Iterative sets must resolve even when no object has a related object."""
+        with patch('xlsxwriter.Workbook') as mock_workbook_ctor:
+            mock_workbook_ctor.return_value = Mock()
+
+            exporter = self._iterative_set_exporter()
+
+            SampleModel.objects.create(name='Test', email='test@example.com')
+
+            fields, iterative = exporter.get_selected_fields(exporter.get_queryset())
+
+            assert len(fields) == 1
+            assert len(iterative) == 1
+            assert iterative[0]['iteration_number'] == 0
+            assert iterative[0]['verbose_name'] == 'Sample Related Model'
+
+    def test_excel_exporter_mixin_get_selected_fields_iterative_set(self):
+        """Iteration number follows the object with the most related objects."""
+        with patch('xlsxwriter.Workbook') as mock_workbook_ctor:
+            mock_workbook_ctor.return_value = Mock()
+
+            exporter = self._iterative_set_exporter()
+
+            SampleModel.objects.create(name='Empty', email='empty@example.com')
+            with_relatives = SampleModel.objects.create(name='Full', email='full@example.com')
+            SampleRelatedModel.objects.create(sample=with_relatives, label='first')
+            SampleRelatedModel.objects.create(sample=with_relatives, label='second')
+
+            fields, iterative = exporter.get_selected_fields(exporter.get_queryset())
+
+            assert iterative[0]['iteration_number'] == 2
+            assert iterative[0]['verbose_name'] == 'Sample Related Model'
+            assert [field[0] for field in iterative[0]['fields']] == ['label']
+
+    @staticmethod
+    def _iterative_set_exporter():
+        class TestExcelExporter(ExcelExporterMixin):
+            def get_queryset(self):
+                return SampleModel.objects.all()
+
+            def get_worksheet_title(self, index=0):
+                return 'Test'
+
+            @staticmethod
+            def selectable_fields():
+                return {'group1': [('name', 'Name', 20), ('email', 'Email', 30)]}
+
+            @staticmethod
+            def selectable_iterative_sets():
+                return {'samplerelatedmodel_set': {'group1': [('label', 'Label', 20)]}}
+
+        exporter = TestExcelExporter(user=None, recipients=[])
+        exporter.selected_fields = ['name', 'label']
+        return exporter
 
     def test_excel_exporter_mixin_get_paginator(self):
         """Test pagination."""

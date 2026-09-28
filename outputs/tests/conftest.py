@@ -310,18 +310,19 @@ def enable_db_access_for_all_tests(db):
 
 @pytest.fixture(autouse=True)
 def create_test_model_table(db):
-    """Create SampleModel table for tests."""
+    """Create test model tables for tests."""
     from django.db import connection
     from django.contrib.contenttypes.models import ContentType
-    from outputs.tests.models import SampleModel
+    from outputs.tests.models import SampleModel, SampleRelatedModel
     
     # Create the table if it doesn't exist
     with connection.schema_editor() as schema_editor:
-        try:
-            schema_editor.create_model(SampleModel)
-        except Exception:
-            # Table might already exist, ignore
-            pass
+        for model in (SampleModel, SampleRelatedModel):
+            try:
+                schema_editor.create_model(model)
+            except Exception:
+                # Table might already exist, ignore
+                pass
 
     # Ensure ContentType exists for SampleModel
     ContentType.objects.get_for_model(SampleModel)

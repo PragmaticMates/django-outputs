@@ -699,7 +699,8 @@ class ExcelExporterMixin(ExporterMixin):
                         if self.get_attribute(field) in self.selected_fields:
                             iterative_fields.append(field)
 
-                relatives_verbose_name = getattr(object_with_max_relatives, set_attribute).first()._meta.verbose_name
+                # resolved from the model, not an instance: every object may have an empty related set
+                relatives_verbose_name = objects.model._meta.get_field(relatives_name).related_model._meta.verbose_name
 
                 iterative_sets_fields.append({
                     'set_attr': set_attribute,
