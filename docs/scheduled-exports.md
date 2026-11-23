@@ -8,7 +8,11 @@ Schedulers can be created:
 
 - Via the Django admin
 - Via the UI at `outputs:scheduler_create`
-- Directly from an existing `Export` at `outputs:scheduler_create_from_export` (pre-fills content type, fields, format, context, exporter path, query string, and recipients from the source export)
+- Directly from an existing `Export` at `outputs:scheduler_create_from_export` (pre-fills content type, fields, format, context, exporter path, query string, recipients, and external emails from the source export)
+
+## External recipients
+
+`Scheduler.external_emails` holds addresses of people without a user account. Each scheduled run copies them to the created `Export`, so they receive the same email as the users in `recipients`. External addresses never receive in-app notifications.
 
 ## Routine choices
 

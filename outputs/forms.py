@@ -145,10 +145,11 @@ class SchedulerForm(forms.ModelForm):
         fields = ('routine', 'cron_string', 'is_active', 'language',
                   'content_type', 'fields',
                   'format', 'context', 'exporter_path',
-                  'query_string', 'recipients')
+                  'query_string', 'recipients', 'external_emails')
         widgets = {
             'query_string': TextInput,
-            'fields': Textarea
+            'fields': Textarea,
+            'external_emails': Textarea(attrs={'rows': 3})
         }
 
     def __init__(self, *args, **kwargs):
@@ -178,6 +179,7 @@ class SchedulerForm(forms.ModelForm):
                 Fieldset(
                     _('Management'),
                     'recipients',
+                    'external_emails',
                     'routine',
                     'cron_string',
                     'language',

@@ -4,7 +4,7 @@ from outputs.models import Scheduler
 
 
 def reschedule_schedulers(*args, **kwargs):
-    for scheduler in Scheduler.objects.all():
+    for scheduler in Scheduler.objects.only('is_active', 'routine', 'cron_string', 'job_id'):
         scheduler.schedule()
 
 

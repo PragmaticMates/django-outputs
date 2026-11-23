@@ -466,6 +466,26 @@ class TestExporterMixin:
         assert export.items.count() == 1
         # Check that emails field is set
         assert user.email in export.emails
+        assert export.external_emails == []
+
+    def test_exporter_mixin_save_export_with_external_emails(self, user):
+        """Test external emails are saved to the export."""
+        from django.contrib.contenttypes.models import ContentType
+        exporter = ExporterMixin(user=user, recipients=[user], external_emails=['external@example.com'])
+        exporter.queryset = SampleModel.objects.all()
+        exporter.export_format = Export.FORMAT_XLSX
+        exporter.export_context = Export.CONTEXT_LIST
+        content_type, _ = ContentType.objects.get_or_create(app_label='outputs', model='samplemodel')
+
+        with patch.object(exporter, 'get_queryset', return_value=exporter.queryset, create=True), \
+             patch('outputs.mixins.ContentType.objects.get_for_model', return_value=content_type):
+            export = exporter.save_export()
+
+        export.refresh_from_db()
+        assert export.external_emails == ['external@example.com']
+        assert export.emails == [user.email, 'external@example.com']
+        assert list(export.recipients.all()) == [user]
+        assert export.recipients_emails == [user.email, 'external@example.com']
 
     def test_exporter_mixin_save_export_with_items(self, user):
         """Test saving export with items."""

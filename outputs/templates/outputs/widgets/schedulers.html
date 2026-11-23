@@ -38,7 +38,10 @@
                         </td>
                         <td>{{ scheduler.is_active|yesno }}</td>
                         <td>{% include 'accounts/helpers/user_info.html' with user=scheduler.creator %}</td>
-                        <td>{{ scheduler.recipients.all|join:'<br>' }}</td>
+                        <td>
+                            {{ scheduler.recipients.all|join:'<br>' }}
+                            {% if scheduler.external_emails %}<div>{{ scheduler.external_emails|join:'<br>' }}</div>{% endif %}
+                        </td>
                         <td>{{ scheduler.created }}</td>
                         <td>
                             {% if scheduler.format == scheduler.FORMAT_XLSX %}

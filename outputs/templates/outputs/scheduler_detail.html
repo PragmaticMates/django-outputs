@@ -84,6 +84,11 @@
                     {% trans 'No data found' %}
                 {% endfor %}
             </div>
+
+            {% if scheduler.external_emails %}
+                <h4 class="mt-4">{% trans 'External emails' %}</h4>
+                {{ scheduler.external_emails|join:'<br>' }}
+            {% endif %}
         </div>
     </div>
 </div>

@@ -105,6 +105,11 @@ class TestSerializeDeserializeExporterParams:
         assert 'queryset_ids' not in deserialized
         assert 'queryset_model' not in deserialized
 
+    def test_external_emails_survive_roundtrip(self, scheduler):
+        scheduler.external_emails = ['external@example.com']
+        deserialized = deserialize_exporter_params(serialize_exporter_params(scheduler.exporter_params))
+        assert deserialized['external_emails'] == ['external@example.com']
+
     def test_serialize_none_user(self):
         params = {'user': None, 'recipients': []}
         result = serialize_exporter_params(params)

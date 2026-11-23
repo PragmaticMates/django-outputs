@@ -1,6 +1,7 @@
 """
 Tests for forms.
 """
+import pytest
 from django.contrib.auth import get_user_model
 
 from outputs.forms import ConfirmExportForm, ChooseExportFieldsForm, SchedulerForm
@@ -146,6 +147,23 @@ class TestSchedulerForm:
         # Should fail validation
         assert not form.is_valid()
         assert '__all__' in form.errors
+
+    @pytest.mark.parametrize('value, cleaned', [
+        ('', []),
+        ('a@example.com', ['a@example.com']),
+        ('a@example.com, b@example.com', ['a@example.com', 'b@example.com']),
+    ])
+    def test_scheduler_form_external_emails(self, value, cleaned):
+        """Test comma separated external emails."""
+        field = SchedulerForm().fields['external_emails']
+        assert not field.required
+        assert field.clean(value) == cleaned
+
+    def test_scheduler_form_invalid_external_email(self):
+        """Test invalid external email."""
+        form = SchedulerForm(data={'external_emails': 'a@example.com, invalid'})
+        assert not form.is_valid()
+        assert 'external_emails' in form.errors
 
     def test_scheduler_form_fields(self):
         """Test form fields."""
