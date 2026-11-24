@@ -73,7 +73,7 @@ Stores one row per object included in an export. Replaced the former GM2M generi
 | `detail` | `TextField` | String representation of the object, or error message on failure |
 | `created` / `modified` | `DateTimeField` | Auto-managed timestamps |
 
-Indexes are defined on `(content_type, object_id)`, `(export, result)`, and `(export, created)` for efficient querying.
+Indexes are defined on `(content_type, object_id)`, `(export, result)`, and `(export, created)` for efficient querying, plus a covering `(export, content_type, result, object_id)` index so "not yet exported" lookups (`NOT EXISTS` over the items of matching exports) are index-only scans.
 
 Custom queryset methods on `ExportItemQuerySet`:
 
