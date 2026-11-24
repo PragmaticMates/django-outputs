@@ -74,6 +74,8 @@ class AbstractExport(models.Model):
     creator = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name=_('creator'), on_delete=models.PROTECT, related_name="%(class)s_where_creator",
                                 blank=True, null=True, default=None)
     recipients = models.ManyToManyField(get_user_model(), verbose_name=_('recipients'), related_name="%(class)s_where_recipient", blank=True)
+    external_emails = ArrayField(verbose_name=_('external emails'), base_field=models.EmailField(), blank=True, default=list,
+                                 help_text=_('Comma separated emails of recipients without a user account'))
     created = models.DateTimeField(_('created'), auto_now_add=True)
     modified = models.DateTimeField(_('modified'), auto_now=True)
     send_separately = models.BooleanField(_('send separately'), default=False)
@@ -117,6 +119,7 @@ class AbstractExport(models.Model):
             'params': self.params,
             'user': self.creator,
             'recipients': self.recipients.all(),
+            'external_emails': list(self.external_emails),
             'selected_fields': self.fields,
             'send_separately': self.send_separately
         }
@@ -127,7 +130,7 @@ class AbstractExport(models.Model):
 
     @property
     def recipients_emails(self):
-        return list(self.recipients.values_list('email', flat=True))
+        return list(dict.fromkeys([*self.recipients.values_list('email', flat=True), *self.external_emails]))
 
     def get_params_display(self):
         result = ''

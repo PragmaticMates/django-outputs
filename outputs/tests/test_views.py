@@ -116,6 +116,15 @@ class TestSchedulerCreateView:
         response = client.get(url)
         assert response.status_code == 200
 
+    def test_scheduler_create_view_initial_external_emails(self, client, user_with_perms, export):
+        """Test initial external emails from export without the snapshot of users' emails."""
+        export.emails = [user_with_perms.email, 'external@example.com']
+        export.external_emails = ['external@example.com']
+        export.save()
+        client.force_login(user_with_perms)
+        response = client.get(reverse('outputs:scheduler_create_from_export', args=[export.pk]))
+        assert response.context_data['form'].initial['external_emails'] == ['external@example.com']
+
 
 class TestSchedulerUpdateView:
     """Tests for SchedulerUpdateView."""

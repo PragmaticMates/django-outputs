@@ -204,6 +204,22 @@ class TestMailExport:
         assert len(mail.outbox) == 1
         assert len(mail.outbox[0].to) == export.recipients.count()
 
+    @pytest.mark.parametrize('send_separately, expected', [
+        (False, [['test@example.com', 'external@example.com']]),
+        (True, [['test@example.com'], ['external@example.com']]),
+    ])
+    def test_mail_export_external_emails(self, export, exporter_class, mock_storage, mock_email_backend, send_separately, expected):
+        """Test external emails receive the export together with users."""
+        export.send_separately = send_separately
+        export.external_emails = ['external@example.com']
+        exporter = exporter_class(user=export.creator, recipients=export.recipients.all())
+
+        with patch.object(type(export), 'exporter', new_callable=lambda: property(lambda self: exporter)):
+            mail_successful_export(export, filename='test.xlsx')
+
+        assert [message.to for message in mail.outbox] == expected
+        assert all(message.attachments for message in mail.outbox)
+
     def test_mail_export_save_as_file(self, export, exporter_class, mock_storage, mock_email_backend, settings):
         """Test saving as file."""
         export.send_separately = False

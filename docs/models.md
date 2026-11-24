@@ -16,6 +16,7 @@ Abstract base class shared by `Export` and `Scheduler`. Holds the fields that de
 | `query_string` | `TextField` | URL-encoded filter parameters |
 | `creator` | FK → `AUTH_USER_MODEL` | User who created the export |
 | `recipients` | M2M → `User` | Users who will receive the export email |
+| `external_emails` | `ArrayField` | Email addresses without a user account that will receive the export email too |
 | `send_separately` | `BooleanField` | Send one email per recipient instead of a single combined email |
 | `created` / `modified` | `DateTimeField` | Auto-managed timestamps |
 
@@ -25,6 +26,7 @@ Notable properties:
 - **`exporter_class`** – Imports and returns the exporter class from `exporter_path`.
 - **`exporter`** – Instantiates the exporter, automatically dropping constructor arguments the class does not accept.
 - **`params`** – Returns `query_string` as a `QueryDict`.
+- **`recipients_emails`** – Returns the emails of `recipients` followed by `external_emails`, without duplicates.
 - **`get_params_display()`** – Returns a human-readable multiline string of active filter values, falling back to raw key/value pairs if the exporter cannot be imported.
 - **`get_fields_labels()`** – Returns display labels for the selected fields by consulting `selectable_fields()` on the exporter.
 
@@ -41,7 +43,7 @@ Additional fields beyond `AbstractExport`:
 | `status` | `CharField` | `PENDING` → `PROCESSING` → `FINISHED` / `FAILED` |
 | `output_type` | `CharField` | `FILE` (attach to email) or `STREAM` (direct download) |
 | `total` | `PositiveIntegerField` | Number of items in the export |
-| `emails` | `ArrayField` | Snapshot of recipient email addresses at export time |
+| `emails` | `ArrayField` | Snapshot of all recipient email addresses (users and external) at export time |
 | `url` | `URLField` | URL of the originating list view |
 
 Notable properties and methods:

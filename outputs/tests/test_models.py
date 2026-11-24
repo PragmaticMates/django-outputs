@@ -51,6 +51,22 @@ class TestExport:
         assert user.email in emails
         assert other_user.email in emails
 
+    def test_export_recipients_emails_with_external_emails(self, export, user):
+        """Test external emails follow users' emails without duplicates."""
+        export.external_emails = ['external@example.com', user.email, 'external@example.com']
+        assert export.recipients_emails == [user.email, 'external@example.com']
+
+    def test_export_recipients_emails_ignores_emails_snapshot(self, export, user):
+        """Test snapshot of emails is not used as a list of recipients."""
+        export.emails = ['removed@example.com']
+        assert export.recipients_emails == [user.email]
+
+    def test_scheduler_exporter_params_external_emails(self, scheduler):
+        """Test scheduler passes external emails to exporter."""
+        assert scheduler.exporter_params['external_emails'] == []
+        scheduler.external_emails = ['external@example.com']
+        assert scheduler.exporter_params['external_emails'] == ['external@example.com']
+
     def test_export_get_params_display(self, export):
         """Test params display."""
         display = export.get_params_display()

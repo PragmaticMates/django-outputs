@@ -32,7 +32,10 @@
                     <tr>
                         <td>{{ export.id }}</td>
                         <td>{% include 'accounts/helpers/user_info.html' with user=export.creator %}</td>
-                        <td>{{ export.recipients.all|join:'<br>' }}</td>
+                        <td>
+                            {{ export.recipients.all|join:'<br>' }}
+                            {% if export.external_emails %}<div>{{ export.external_emails|join:'<br>' }}</div>{% endif %}
+                        </td>
                         <td>{{ export.created }}</td>
                         <td>
                             {% if export.format == export.FORMAT_XLSX %}

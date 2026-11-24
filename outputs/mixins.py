@@ -250,6 +250,7 @@ class ExporterMixin(object):
     export_format = None
     export_context = None
     send_separately = False
+    external_emails = ()
     output_type = Export.OUTPUT_TYPE_FILE
     description = ''
     url = ''
@@ -262,6 +263,7 @@ class ExporterMixin(object):
         self.filename = kwargs.pop('filename', self.filename)
         self.output_type = kwargs.pop('output_type', self.output_type)
         self.send_separately = kwargs.pop('send_separately', self.send_separately)
+        self.external_emails = kwargs.pop('external_emails', self.external_emails)
         self.user = user
         self.recipients = recipients
 
@@ -400,7 +402,8 @@ class ExporterMixin(object):
             query_string=params.urlencode() if params else "",
             total=items.count(),
             url=self.url,
-            emails=[recipient.email for recipient in self.recipients]
+            emails=list(dict.fromkeys([*[recipient.email for recipient in self.recipients], *self.external_emails])),
+            external_emails=list(self.external_emails)
         )
         export.recipients.add(*list(self.recipients))
 

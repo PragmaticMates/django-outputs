@@ -72,7 +72,7 @@ class ExportAdmin(admin.ModelAdmin):
         'status', 'total', 'url',
         ('content_type', 'format', 'context', 'output_type'),
         ('exporter_path', 'fields', 'query_string'),
-        ('creator', 'recipients', 'emails', 'send_separately'),
+        ('creator', 'recipients', 'external_emails', 'emails', 'send_separately'),
         'created', 'modified'
     ]
     readonly_fields = ['total', 'created', 'modified']
