@@ -394,6 +394,7 @@ class ExportItem(models.Model):
             models.Index(fields=['content_type', 'object_id']),
             models.Index(fields=['export', 'result']),
             models.Index(fields=['export', 'created']),
+            models.Index(fields=['export', 'content_type', 'result', 'object_id'], name='exportitem_export_ct_res_obj'),
         ]
 
     def __str__(self):
