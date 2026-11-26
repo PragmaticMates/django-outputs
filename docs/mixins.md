@@ -39,7 +39,7 @@ Key methods to implement or override:
 - **`get_message_body(count, file_url=None)`** – Return the HTML email body sent to recipients.
 - **`get_message_subject()`** – Return a custom email subject, or `None` to use the default.
 - **`export_to_response()`** – Calls `export()` and returns an `HttpResponse` with the file attached; useful for synchronous streaming exports.
-- **`save_export()`** – Persists an `Export` record and `ExportItem` records to the database; called by `execute_export()` before enqueuing the mail job.
+- **`save_export()`** – Persists an `Export` record and `ExportItem` records to the database; called by the `execute_export` job (`outputs/jobs.py`) before it queues the mail job.
 
 ---
 

@@ -370,6 +370,8 @@ class ExportItem(models.Model):
         (RESULT_FAILURE, _('failure')),
     ]
 
+    # created as BigAutoField (migration 0020), unlike the app's other models
+    id = models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')
     export = models.ForeignKey(
         Export,
         verbose_name=_('export'),
