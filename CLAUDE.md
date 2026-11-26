@@ -49,9 +49,9 @@ A typical concrete exporter inherits `FilterExporterMixin` + `ExcelExporterMixin
 
 ### Export Flow
 
-1. **Immediate export** (`ConfirmExportMixin` / `SelectExportMixin` views): `execute_export()` in `usecases.py` calls `exporter.save_export()` then `export.send_mail()`.
+1. **Immediate export** (`ConfirmExportMixin` / `SelectExportMixin` views): `export()` dispatches the `execute_export` job (`jobs.py`, queue `exports`) with the exporter path and `serialize_exporter_params()`; in the worker it rebuilds the exporter, calls `exporter.save_export()` then `export.send_mail()`.
 2. **Async processing** (`jobs.py`): `mail_export_by_id` is an RQ task (queue `exports`) that calls `export_items()` in `usecases.py`, which runs the exporter, updates `Export.status` and all `ExportItem.result` fields atomically, then emails recipients.
-3. **Scheduled exports** (`cron.py`): `schedule_export()` is invoked by `rq-scheduler` via a cron job stored on the `Scheduler` model; it calls `execute_export()` with the scheduler's exporter.
+3. **Scheduled exports** (`cron.py`): `schedule_export()` is invoked by `rq-scheduler` via a cron job stored on the `Scheduler` model; it dispatches the `execute_export` job with the scheduler's exporter path and serialized params.
 
 ### Configuration (`outputs/settings.py`)
 

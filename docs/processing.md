@@ -4,9 +4,9 @@ This page documents the four modules that form the async processing pipeline.
 
 ```
 View / Scheduler
-      │
+      │  dispatch_task(execute_export, exporter path, serialized params, language)
       ▼
- execute_export()          ← usecases.py  (entry point)
+ execute_export()          ← jobs.py  (RQ task on "exports" queue)
       │  saves Export + ExportItem rows
       │  calls Export.send_mail()
       │
@@ -26,7 +26,52 @@ Scheduled exports follow the same pipeline but enter via `schedule_export()` in 
 
 ## Jobs (`outputs/jobs.py`)
 
-Contains the RQ task that drives async export processing.
+Contains the RQ tasks that drive async export processing. Both are wrapped by
+`pragmatic.utils.get_task_decorator("exports")` and started with
+`pragmatic.utils.dispatch_task()`, which queues them (or runs them inline,
+depending on django-pragmatic's settings).
+
+### `execute_export(exporter_class, exporter_params, language)`
+
+Entry point of every export, from a view (`ConfirmExportMixin.export()`) or
+the cron runner (`schedule_export()`). It runs in the worker, so the request
+returns at once, however many items the export snapshots.
+
+The caller does not pass ORM objects, only what can be queued:
+
+- `exporter_class`: the exporter's dotted path (`exporter_class.get_path()`);
+  a class is accepted too.
+- `exporter_params`: the exporter's keyword arguments after
+  `outputs.utils.serialize_exporter_params()`, which turns `user` into
+  `user_id`, `recipients` into `recipient_ids`, and a `queryset` into
+  `queryset_ids` and `queryset_model`.
+
+Steps:
+
+1. `deserialize_exporter_params()` rebuilds the user, recipients and queryset;
+   the exporter is instantiated with them.
+2. `exporter.save_export()` persists the `Export` and `ExportItem` records.
+3. `export.send_mail(language, filename)` queues `mail_export_by_id`.
+
+Errors are logged and re-raised, so RQ marks the job as failed.
+
+```python
+from django.utils import translation
+from pragmatic.utils import dispatch_task
+from outputs.jobs import execute_export
+from outputs.utils import serialize_exporter_params
+
+dispatch_task(
+    execute_export,
+    MyExporter.get_path(),
+    serialize_exporter_params({'user': request.user, 'recipients': [request.user], 'params': {}}),
+    language=translation.get_language(),
+)
+```
+
+> **Changed in 4.0:** `execute_export()` used to be a plain function in
+> `outputs.usecases` taking an exporter instance. Code importing it from there
+> fails with `ImportError`; dispatch `outputs.jobs.execute_export` as above.
 
 ### `mail_export_by_id(export_id, export_class_name, language, filename=None)`
 
@@ -47,16 +92,7 @@ The task decorator is obtained via `pragmatic.utils.get_task_decorator("exports"
 
 ## Usecases (`outputs/usecases.py`)
 
-Plain functions containing the core business logic. They are called by jobs, views, and the cron runner; nothing in this module is queue-specific.
-
-### `execute_export(exporter, language)`
-
-Entry point for triggering a new export from a view or the cron runner.
-
-1. Calls `exporter.save_export()` to persist the `Export` and `ExportItem` records.
-2. Calls `export.send_mail(language, filename)` to enqueue `mail_export_by_id` on the `exports` queue.
-
-Raises on any error (the caller is responsible for handling or re-raising).
+Plain functions containing the core business logic, called by the jobs; nothing in this module is queue-specific.
 
 ### `export_items(export, language, filename=None)`
 
@@ -106,7 +142,7 @@ The function registered with `rq-scheduler` as a recurring cron job. It is store
 Steps:
 
 1. Resolves `scheduler_class_name` via `import_string` and fetches the `Scheduler` by `scheduler_id`. Passing the class name (rather than a hard-coded import path) allows the `Scheduler` model to be subclassed in the host application.
-2. Calls `execute_export(scheduler.exporter, language=scheduler.language)` to save a new `Export` record and enqueue the mail job.
+2. Dispatches `execute_export` with the scheduler's exporter path, its serialized `exporter_params` and `scheduler.language`; the job saves a new `Export` record and queues the mail job.
 3. Appends the current UTC datetime to `scheduler.executions` and saves only that field.
 
 ---

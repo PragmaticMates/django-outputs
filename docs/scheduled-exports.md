@@ -37,7 +37,7 @@ The scheduler job is managed automatically via Django signals:
 Each time the cron fires, `schedule_export()` in `cron.py`:
 
 1. Fetches the `Scheduler` record by its PK.
-2. Calls `execute_export(scheduler.exporter, language=scheduler.language)`, which saves a new `Export` record and enqueues the mail job exactly as a manual export would.
+2. Dispatches the `execute_export` job with the scheduler's exporter path, its serialized parameters and `scheduler.language`. The job saves a new `Export` record and queues the mail job exactly as a manual export does.
 3. Appends the execution timestamp to `scheduler.executions`.
 
 See [Processing](processing.md) for the full async pipeline.
